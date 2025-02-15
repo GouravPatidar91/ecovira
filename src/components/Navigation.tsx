@@ -1,14 +1,41 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Menu, X, ShoppingCart, User, LogOut } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/components/ui/use-toast";
 import AuthForm from "./AuthForm";
 
 const Navigation = () => {
   const [isOpen, setIsOpen] = useState(false);
-  const [isAuthenticated, setIsAuthenticated] = useState(false); // This will be replaced with real auth state
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isAuthDialogOpen, setIsAuthDialogOpen] = useState(false);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    // Check initial auth state
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setIsAuthenticated(!!session);
+    });
+
+    // Listen for auth changes
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      setIsAuthenticated(!!session);
+      if (event === 'SIGNED_IN') {
+        setIsAuthDialogOpen(false);
+        toast({
+          title: "Welcome!",
+          description: "You have successfully signed in.",
+        });
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
 
   const menuItems = [
     { title: "Market", href: "/market" },
@@ -17,9 +44,22 @@ const Navigation = () => {
     { title: "Contact", href: "/contact" },
   ];
 
-  const handleLogout = () => {
-    setIsAuthenticated(false);
-    // Add logout logic here
+  const handleLogout = async () => {
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+      
+      toast({
+        title: "Goodbye!",
+        description: "You have been logged out successfully.",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "There was a problem signing out.",
+        variant: "destructive",
+      });
+    }
   };
 
   return (
@@ -70,7 +110,7 @@ const Navigation = () => {
                 </Button>
               </>
             ) : (
-              <Dialog>
+              <Dialog open={isAuthDialogOpen} onOpenChange={setIsAuthDialogOpen}>
                 <DialogTrigger asChild>
                   <Button variant="default" className="bg-market-500 hover:bg-market-600">
                     Login
