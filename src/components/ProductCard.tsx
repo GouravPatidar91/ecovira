@@ -2,8 +2,12 @@
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { useState } from "react";
+import { useCart } from "@/contexts/CartContext";
+import { Loader2 } from "lucide-react";
 
 interface ProductCardProps {
+  id: string;
   name: string;
   price: number;
   unit: string;
@@ -11,9 +15,12 @@ interface ProductCardProps {
   farmer: string;
   location: string;
   organic: boolean;
+  description?: string;
+  quantity_available: number;
 }
 
 const ProductCard = ({
+  id,
   name,
   price,
   unit,
@@ -21,7 +28,20 @@ const ProductCard = ({
   farmer,
   location,
   organic,
+  description,
+  quantity_available,
 }: ProductCardProps) => {
+  const [isLoading, setIsLoading] = useState(false);
+  const { addToCart, state } = useCart();
+
+  const handleAddToCart = async () => {
+    setIsLoading(true);
+    await addToCart({ id, name, price, unit, images: [image] }, 1);
+    setIsLoading(false);
+  };
+
+  const isInCart = state.items.some(item => item.product_id === id);
+
   return (
     <Card className="group overflow-hidden transition-all duration-300 hover:shadow-lg">
       <CardContent className="p-0 relative">
@@ -53,8 +73,23 @@ const ProductCard = ({
             ${price}/{unit}
           </p>
         </div>
-        <Button className="w-full bg-market-500 hover:bg-market-600">
-          Add to Cart
+        {description && (
+          <p className="text-sm text-gray-600 line-clamp-2">{description}</p>
+        )}
+        <Button 
+          className="w-full bg-market-500 hover:bg-market-600"
+          onClick={handleAddToCart}
+          disabled={isLoading || isInCart || quantity_available === 0}
+        >
+          {isLoading ? (
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          ) : isInCart ? (
+            "In Cart"
+          ) : quantity_available === 0 ? (
+            "Out of Stock"
+          ) : (
+            "Add to Cart"
+          )}
         </Button>
       </CardFooter>
     </Card>

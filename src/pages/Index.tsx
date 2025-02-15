@@ -1,49 +1,72 @@
 
+import { useEffect, useState } from "react";
 import Navigation from "@/components/Navigation";
 import ProductCard from "@/components/ProductCard";
 import { Button } from "@/components/ui/button";
 import { Search } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+
+interface Product {
+  id: string;
+  name: string;
+  price: number;
+  unit: string;
+  images: string[];
+  seller: {
+    business_name: string;
+    location: string;
+  };
+  is_organic: boolean;
+  quantity_available: number;
+  description: string;
+}
 
 const Index = () => {
-  // Sample products data
-  const products = [
-    {
-      name: "Fresh Organic Tomatoes",
-      price: 2.99,
-      unit: "lb",
-      image: "https://images.unsplash.com/photo-1524593166156-312f362cada0?auto=format&fit=crop&q=80",
-      farmer: "Green Valley Farm",
-      location: "California",
-      organic: true,
-    },
-    {
-      name: "Sweet Corn",
-      price: 0.99,
-      unit: "ear",
-      image: "https://images.unsplash.com/photo-1551754655-cd27e38d2076?auto=format&fit=crop&q=80",
-      farmer: "Sunrise Acres",
-      location: "Iowa",
-      organic: false,
-    },
-    {
-      name: "Fresh Strawberries",
-      price: 4.99,
-      unit: "lb",
-      image: "https://images.unsplash.com/photo-1601004890684-d8cbf643f5f2?auto=format&fit=crop&q=80",
-      farmer: "Berry Fields",
-      location: "Oregon",
-      organic: true,
-    },
-    {
-      name: "Organic Carrots",
-      price: 1.99,
-      unit: "lb",
-      image: "https://images.unsplash.com/photo-1598170845023-6b9f165b11c8?auto=format&fit=crop&q=80",
-      farmer: "Root Valley",
-      location: "Vermont",
-      organic: true,
-    },
-  ];
+  const [products, setProducts] = useState<Product[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    const fetchProducts = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('products')
+          .select(`
+            id,
+            name,
+            price,
+            unit,
+            images,
+            is_organic,
+            quantity_available,
+            description,
+            seller_id,
+            seller:profiles (
+              business_name,
+              location
+            )
+          `)
+          .eq('status', 'active')
+          .order('created_at', { ascending: false })
+          .limit(4);
+
+        if (error) throw error;
+
+        setProducts(data);
+      } catch (error) {
+        toast({
+          title: "Error",
+          description: "Failed to load products",
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchProducts();
+  }, []);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -84,11 +107,35 @@ const Index = () => {
               View All
             </Button>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 animate-slide-up">
-            {products.map((product, index) => (
-              <ProductCard key={index} {...product} />
-            ))}
-          </div>
+          {isLoading ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              {[...Array(4)].map((_, index) => (
+                <div key={index} className="animate-pulse">
+                  <div className="bg-gray-200 aspect-square rounded-lg mb-4" />
+                  <div className="h-4 bg-gray-200 rounded w-3/4 mb-2" />
+                  <div className="h-4 bg-gray-200 rounded w-1/2" />
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 animate-slide-up">
+              {products.map((product) => (
+                <ProductCard
+                  key={product.id}
+                  id={product.id}
+                  name={product.name}
+                  price={product.price}
+                  unit={product.unit}
+                  image={product.images?.[0] || "https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&q=80"}
+                  farmer={product.seller.business_name}
+                  location={product.seller.location}
+                  organic={product.is_organic}
+                  quantity_available={product.quantity_available}
+                  description={product.description}
+                />
+              ))}
+            </div>
+          )}
         </div>
       </section>
 
