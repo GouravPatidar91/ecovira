@@ -1,11 +1,14 @@
 
 import { useState } from "react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Menu, X, ShoppingCart, User } from "lucide-react";
+import { Menu, X, ShoppingCart, User, LogOut } from "lucide-react";
+import AuthForm from "./AuthForm";
 
 const Navigation = () => {
   const [isOpen, setIsOpen] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false); // This will be replaced with real auth state
 
   const menuItems = [
     { title: "Market", href: "/market" },
@@ -13,6 +16,11 @@ const Navigation = () => {
     { title: "Farmers", href: "/farmers" },
     { title: "Contact", href: "/contact" },
   ];
+
+  const handleLogout = () => {
+    setIsAuthenticated(false);
+    // Add logout logic here
+  };
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-md border-b">
@@ -46,9 +54,33 @@ const Navigation = () => {
                 0
               </span>
             </Button>
-            <Button variant="ghost" size="icon">
-              <User className="h-5 w-5 text-gray-600" />
-            </Button>
+
+            {isAuthenticated ? (
+              <>
+                <Button variant="ghost" size="icon">
+                  <User className="h-5 w-5 text-gray-600" />
+                </Button>
+                <Button 
+                  variant="ghost" 
+                  size="icon"
+                  onClick={handleLogout}
+                  className="text-gray-600 hover:text-red-600"
+                >
+                  <LogOut className="h-5 w-5" />
+                </Button>
+              </>
+            ) : (
+              <Dialog>
+                <DialogTrigger asChild>
+                  <Button variant="default" className="bg-market-500 hover:bg-market-600">
+                    Login
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-md">
+                  <AuthForm />
+                </DialogContent>
+              </Dialog>
+            )}
 
             {/* Mobile Menu Button */}
             <Sheet open={isOpen} onOpenChange={setIsOpen}>
