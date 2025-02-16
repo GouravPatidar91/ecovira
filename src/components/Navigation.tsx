@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Menu, X, ShoppingCart, User, LogOut } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
+import { useNavigate, useLocation } from "react-router-dom";
 import AuthForm from "./AuthForm";
 
 const Navigation = () => {
@@ -13,6 +14,8 @@ const Navigation = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isAuthDialogOpen, setIsAuthDialogOpen] = useState(false);
   const { toast } = useToast();
+  const navigate = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
     // Check initial auth state
@@ -37,13 +40,6 @@ const Navigation = () => {
     return () => subscription.unsubscribe();
   }, []);
 
-  const menuItems = [
-    { title: "Market", href: "/market" },
-    { title: "About", href: "/about" },
-    { title: "Farmers", href: "/farmers" },
-    { title: "Contact", href: "/contact" },
-  ];
-
   const handleLogout = async () => {
     try {
       const { error } = await supabase.auth.signOut();
@@ -53,6 +49,7 @@ const Navigation = () => {
         title: "Goodbye!",
         description: "You have been logged out successfully.",
       });
+      navigate('/');
     } catch (error) {
       toast({
         title: "Error",
@@ -61,6 +58,21 @@ const Navigation = () => {
       });
     }
   };
+
+  const menuItems = [
+    { title: "Market", href: "/market" },
+    { title: "About", href: "/about" },
+    { title: "Farmers", href: "/dashboard/products", requiresAuth: true },
+    { title: "Contact", href: "/contact" },
+  ];
+
+  const farmerMenuItems = [
+    { title: "Products", href: "/dashboard/products" },
+    { title: "Orders", href: "/dashboard/orders" },
+    { title: "Inventory", href: "/dashboard/inventory" },
+  ];
+
+  const isFarmerRoute = location.pathname.startsWith('/dashboard');
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-md border-b">
@@ -75,16 +87,38 @@ const Navigation = () => {
 
           {/* Desktop Menu */}
           <div className="hidden md:flex items-center space-x-8">
-            {menuItems.map((item) => (
-              <a
-                key={item.title}
-                href={item.href}
-                className="text-gray-600 hover:text-market-600 transition-colors duration-200"
-              >
-                {item.title}
-              </a>
-            ))}
+            {menuItems.map((item) => {
+              if (item.requiresAuth && !isAuthenticated) return null;
+              return (
+                <a
+                  key={item.title}
+                  href={item.href}
+                  className={`text-gray-600 hover:text-market-600 transition-colors duration-200 ${
+                    location.pathname === item.href ? 'text-market-600 font-medium' : ''
+                  }`}
+                >
+                  {item.title}
+                </a>
+              );
+            })}
           </div>
+
+          {/* Farmer Sub-navigation */}
+          {isFarmerRoute && isAuthenticated && (
+            <div className="hidden md:flex items-center space-x-4">
+              {farmerMenuItems.map((item) => (
+                <a
+                  key={item.title}
+                  href={item.href}
+                  className={`text-gray-600 hover:text-market-600 transition-colors duration-200 ${
+                    location.pathname === item.href ? 'text-market-600 font-medium' : ''
+                  }`}
+                >
+                  {item.title}
+                </a>
+              ))}
+            </div>
+          )}
 
           {/* User Actions */}
           <div className="flex items-center space-x-4">
@@ -135,7 +169,20 @@ const Navigation = () => {
               </SheetTrigger>
               <SheetContent>
                 <div className="flex flex-col space-y-4 mt-4">
-                  {menuItems.map((item) => (
+                  {menuItems.map((item) => {
+                    if (item.requiresAuth && !isAuthenticated) return null;
+                    return (
+                      <a
+                        key={item.title}
+                        href={item.href}
+                        className="text-lg text-gray-600 hover:text-market-600 transition-colors duration-200"
+                        onClick={() => setIsOpen(false)}
+                      >
+                        {item.title}
+                      </a>
+                    );
+                  })}
+                  {isFarmerRoute && isAuthenticated && farmerMenuItems.map((item) => (
                     <a
                       key={item.title}
                       href={item.href}
