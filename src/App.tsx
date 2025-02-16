@@ -10,6 +10,8 @@ import NotFound from "./pages/NotFound";
 import Auth from "./pages/Auth";
 import Products from "./pages/dashboard/Products";
 import ProductForm from "./pages/dashboard/ProductForm";
+import Orders from "./pages/dashboard/Orders";
+import Inventory from "./pages/dashboard/Inventory";
 
 const queryClient = new QueryClient();
 
@@ -26,6 +28,8 @@ const App = () => (
             <Route path="/dashboard/products" element={<Products />} />
             <Route path="/dashboard/products/new" element={<ProductForm />} />
             <Route path="/dashboard/products/:id" element={<ProductForm />} />
+            <Route path="/dashboard/orders" element={<Orders />} />
+            <Route path="/dashboard/inventory" element={<Inventory />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
