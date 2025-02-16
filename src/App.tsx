@@ -8,6 +8,8 @@ import { CartProvider } from "@/contexts/CartContext";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import Auth from "./pages/Auth";
+import Products from "./pages/dashboard/Products";
+import ProductForm from "./pages/dashboard/ProductForm";
 
 const queryClient = new QueryClient();
 
@@ -21,6 +23,9 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
+            <Route path="/dashboard/products" element={<Products />} />
+            <Route path="/dashboard/products/new" element={<ProductForm />} />
+            <Route path="/dashboard/products/:id" element={<ProductForm />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
