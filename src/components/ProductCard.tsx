@@ -16,7 +16,7 @@ interface ProductCardProps {
   organic: boolean;
   quantity_available: number;
   description: string;
-  seller_id: string;  // Add this prop
+  seller_id: string;
 }
 
 const ProductCard = ({
@@ -30,7 +30,7 @@ const ProductCard = ({
   organic,
   quantity_available,
   description,
-  seller_id,  // Add this prop
+  seller_id,
 }: ProductCardProps) => {
   const { addToCart } = useCart();
 

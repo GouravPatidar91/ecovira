@@ -19,11 +19,11 @@ const Navigation = () => {
     if (session) {
       const { data } = await supabase
         .from('profiles')
-        .select('is_seller')
+        .select('role, is_seller')
         .eq('id', session.user.id)
         .single();
       
-      setIsSeller(data?.is_seller || false);
+      setIsSeller(data?.is_seller || data?.role === 'farmer' || false);
     }
   };
 

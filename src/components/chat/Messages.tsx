@@ -1,4 +1,3 @@
-
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -6,19 +5,18 @@ import { Textarea } from "@/components/ui/textarea";
 import { MessageCircle, Send, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
-import type { Database } from "@/integrations/supabase/types";
 
-type DbResult<T> = T extends (...args: any[]) => infer R ? R : never;
-type DbResultOk<T> = T extends Promise<{ data: infer RT }> ? RT : never;
-type Schema = Database['public']['Tables'];
-type TablesInsert<T extends keyof Schema> = Schema[T]['Insert'];
-type TablesRow<T extends keyof Schema> = Schema[T]['Row'];
-type Message = TablesRow<'messages'> & {
+interface Message {
+  id: string;
+  content: string;
+  created_at: string;
+  sender_id: string;
+  receiver_id: string;
   sender: {
     business_name: string | null;
     full_name: string | null;
   };
-};
+}
 
 interface MessagesProps {
   sellerId: string;
@@ -52,7 +50,7 @@ export function Messages({ sellerId, sellerName }: MessagesProps) {
           .from('messages')
           .select(`
             *,
-            sender:profiles!messages_sender_profiles_fkey (
+            sender:profiles (
               business_name,
               full_name
             )
@@ -62,7 +60,7 @@ export function Messages({ sellerId, sellerName }: MessagesProps) {
           .order('created_at', { ascending: true });
 
         if (error) throw error;
-        setMessages(data || []);
+        setMessages(data as Message[] || []);
       } catch (error) {
         console.error('Error fetching messages:', error);
         toast({
@@ -77,7 +75,6 @@ export function Messages({ sellerId, sellerName }: MessagesProps) {
 
     fetchMessages();
 
-    // Subscribe to new messages
     const channel = supabase
       .channel('messages_channel')
       .on(
@@ -120,7 +117,7 @@ export function Messages({ sellerId, sellerName }: MessagesProps) {
           content: newMessage.trim(),
           sender_id: session.session.user.id,
           receiver_id: sellerId,
-        } as TablesInsert<'messages'>);
+        });
 
       if (error) throw error;
 

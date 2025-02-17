@@ -6,12 +6,13 @@ import { Leaf, ShoppingBasket, MessageCircle, Tractor } from "lucide-react";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { Messages } from "@/components/chat/Messages";
 
 interface Seller {
   id: string;
-  business_name: string;
-  location: string;
-  description: string;
+  business_name: string | null;
+  location: string | null;
+  description: string | null;
   is_organic: boolean;
   avatar_url: string | null;
 }
@@ -33,11 +34,11 @@ const Farmers = () => {
     if (session) {
       const { data } = await supabase
         .from('profiles')
-        .select('is_seller')
+        .select('role, is_seller')
         .eq('id', session.user.id)
         .single();
       
-      setIsSeller(data?.is_seller || false);
+      setIsSeller(data?.is_seller || data?.role === 'farmer' || false);
     }
   };
 
@@ -46,10 +47,17 @@ const Farmers = () => {
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
-        .eq('is_seller', true);
+        .or('is_seller.eq.true,role.eq.farmer');
 
       if (error) throw error;
-      setSellers(data || []);
+      setSellers((data || []).map(seller => ({
+        id: seller.id,
+        business_name: seller.business_name,
+        location: seller.location,
+        description: seller.description || seller.bio,
+        is_organic: seller.is_organic || false,
+        avatar_url: seller.avatar_url
+      })));
     } catch (error) {
       toast({
         title: "Error",
