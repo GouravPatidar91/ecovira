@@ -1,200 +1,41 @@
 
-import { useState, useEffect } from "react";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
+import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Menu, X, ShoppingCart, User, LogOut } from "lucide-react";
+import { CartSheet } from "@/components/CartSheet";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/components/ui/use-toast";
-import { useNavigate, useLocation } from "react-router-dom";
-import AuthForm from "./AuthForm";
+import { useNavigate } from "react-router-dom";
 
 const Navigation = () => {
-  const [isOpen, setIsOpen] = useState(false);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [isAuthDialogOpen, setIsAuthDialogOpen] = useState(false);
-  const { toast } = useToast();
   const navigate = useNavigate();
-  const location = useLocation();
-
-  useEffect(() => {
-    // Check initial auth state
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setIsAuthenticated(!!session);
-    });
-
-    // Listen for auth changes
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((event, session) => {
-      setIsAuthenticated(!!session);
-      if (event === 'SIGNED_IN') {
-        setIsAuthDialogOpen(false);
-        toast({
-          title: "Welcome!",
-          description: "You have successfully signed in.",
-        });
-      }
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
 
   const handleLogout = async () => {
-    try {
-      const { error } = await supabase.auth.signOut();
-      if (error) throw error;
-      
-      toast({
-        title: "Goodbye!",
-        description: "You have been logged out successfully.",
-      });
-      navigate('/');
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "There was a problem signing out.",
-        variant: "destructive",
-      });
-    }
+    await supabase.auth.signOut();
+    navigate("/auth");
   };
 
-  const menuItems = [
-    { title: "Market", href: "/market" },
-    { title: "About", href: "/about" },
-    { title: "Farmers", href: "/dashboard/products", requiresAuth: true },
-    { title: "Contact", href: "/contact" },
-  ];
-
-  const farmerMenuItems = [
-    { title: "Products", href: "/dashboard/products" },
-    { title: "Orders", href: "/dashboard/orders" },
-    { title: "Inventory", href: "/dashboard/inventory" },
-  ];
-
-  const isFarmerRoute = location.pathname.startsWith('/dashboard');
-
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-md border-b">
+    <nav className="fixed top-0 left-0 right-0 z-50 bg-white border-b border-gray-200">
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16">
-          {/* Logo */}
-          <a href="/" className="flex items-center space-x-2">
-            <span className="text-2xl font-semibold text-market-600">
+          <div className="flex items-center space-x-8">
+            <Link to="/" className="text-xl font-bold text-market-600">
               FarmFresh
-            </span>
-          </a>
-
-          {/* Desktop Menu */}
-          <div className="hidden md:flex items-center space-x-8">
-            {menuItems.map((item) => {
-              if (item.requiresAuth && !isAuthenticated) return null;
-              return (
-                <a
-                  key={item.title}
-                  href={item.href}
-                  className={`text-gray-600 hover:text-market-600 transition-colors duration-200 ${
-                    location.pathname === item.href ? 'text-market-600 font-medium' : ''
-                  }`}
-                >
-                  {item.title}
-                </a>
-              );
-            })}
-          </div>
-
-          {/* Farmer Sub-navigation */}
-          {isFarmerRoute && isAuthenticated && (
-            <div className="hidden md:flex items-center space-x-4">
-              {farmerMenuItems.map((item) => (
-                <a
-                  key={item.title}
-                  href={item.href}
-                  className={`text-gray-600 hover:text-market-600 transition-colors duration-200 ${
-                    location.pathname === item.href ? 'text-market-600 font-medium' : ''
-                  }`}
-                >
-                  {item.title}
-                </a>
-              ))}
+            </Link>
+            <div className="hidden md:flex space-x-4">
+              <Link to="/market">
+                <Button variant="ghost">Market</Button>
+              </Link>
+              <Link to="/about">
+                <Button variant="ghost">About</Button>
+              </Link>
             </div>
-          )}
-
-          {/* User Actions */}
+          </div>
+          
           <div className="flex items-center space-x-4">
-            <Button variant="ghost" size="icon" className="relative">
-              <ShoppingCart className="h-5 w-5 text-gray-600" />
-              <span className="absolute -top-1 -right-1 bg-market-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center">
-                0
-              </span>
+            <CartSheet />
+            <Button variant="outline" onClick={handleLogout}>
+              Logout
             </Button>
-
-            {isAuthenticated ? (
-              <>
-                <Button variant="ghost" size="icon">
-                  <User className="h-5 w-5 text-gray-600" />
-                </Button>
-                <Button 
-                  variant="ghost" 
-                  size="icon"
-                  onClick={handleLogout}
-                  className="text-gray-600 hover:text-red-600"
-                >
-                  <LogOut className="h-5 w-5" />
-                </Button>
-              </>
-            ) : (
-              <Dialog open={isAuthDialogOpen} onOpenChange={setIsAuthDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button variant="default" className="bg-market-500 hover:bg-market-600">
-                    Login
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="sm:max-w-md">
-                  <AuthForm />
-                </DialogContent>
-              </Dialog>
-            )}
-
-            {/* Mobile Menu Button */}
-            <Sheet open={isOpen} onOpenChange={setIsOpen}>
-              <SheetTrigger asChild className="md:hidden">
-                <Button variant="ghost" size="icon">
-                  {isOpen ? (
-                    <X className="h-5 w-5" />
-                  ) : (
-                    <Menu className="h-5 w-5" />
-                  )}
-                </Button>
-              </SheetTrigger>
-              <SheetContent>
-                <div className="flex flex-col space-y-4 mt-4">
-                  {menuItems.map((item) => {
-                    if (item.requiresAuth && !isAuthenticated) return null;
-                    return (
-                      <a
-                        key={item.title}
-                        href={item.href}
-                        className="text-lg text-gray-600 hover:text-market-600 transition-colors duration-200"
-                        onClick={() => setIsOpen(false)}
-                      >
-                        {item.title}
-                      </a>
-                    );
-                  })}
-                  {isFarmerRoute && isAuthenticated && farmerMenuItems.map((item) => (
-                    <a
-                      key={item.title}
-                      href={item.href}
-                      className="text-lg text-gray-600 hover:text-market-600 transition-colors duration-200"
-                      onClick={() => setIsOpen(false)}
-                    >
-                      {item.title}
-                    </a>
-                  ))}
-                </div>
-              </SheetContent>
-            </Sheet>
           </div>
         </div>
       </div>
