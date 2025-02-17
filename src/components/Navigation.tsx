@@ -21,9 +21,9 @@ const Navigation = () => {
         .from('profiles')
         .select('role, is_seller')
         .eq('id', session.user.id)
-        .single();
+        .maybeSingle();
       
-      setIsSeller(data?.is_seller || data?.role === 'farmer' || false);
+      setIsSeller(!!data?.is_seller || data?.role === 'farmer' || false);
     }
   };
 

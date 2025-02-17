@@ -1,4 +1,3 @@
-
 import Navigation from "@/components/Navigation";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
@@ -12,9 +11,10 @@ interface Seller {
   id: string;
   business_name: string | null;
   location: string | null;
-  description: string | null;
-  is_organic: boolean;
+  bio: string | null;
+  is_seller: boolean;
   avatar_url: string | null;
+  role: 'farmer' | 'buyer' | 'admin';
 }
 
 const Farmers = () => {
@@ -36,9 +36,9 @@ const Farmers = () => {
         .from('profiles')
         .select('role, is_seller')
         .eq('id', session.user.id)
-        .single();
+        .maybeSingle();
       
-      setIsSeller(data?.is_seller || data?.role === 'farmer' || false);
+      setIsSeller(!!data?.is_seller || data?.role === 'farmer' || false);
     }
   };
 
@@ -50,14 +50,7 @@ const Farmers = () => {
         .or('is_seller.eq.true,role.eq.farmer');
 
       if (error) throw error;
-      setSellers((data || []).map(seller => ({
-        id: seller.id,
-        business_name: seller.business_name,
-        location: seller.location,
-        description: seller.description || seller.bio,
-        is_organic: seller.is_organic || false,
-        avatar_url: seller.avatar_url
-      })));
+      setSellers(data || []);
     } catch (error) {
       toast({
         title: "Error",
@@ -152,7 +145,7 @@ const Farmers = () => {
                     <div className="flex-1">
                       <h3 className="text-lg font-semibold">{seller.business_name}</h3>
                       <p className="text-gray-500 text-sm">{seller.location}</p>
-                      <p className="text-gray-600 mt-2">{seller.description}</p>
+                      <p className="text-gray-600 mt-2">{seller.bio}</p>
                       <div className="flex gap-2 mt-4">
                         <Button
                           variant="outline"
