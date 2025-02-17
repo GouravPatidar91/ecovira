@@ -7,10 +7,12 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
+import { useNavigate } from "react-router-dom";
 
 const AuthForm = () => {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -32,7 +34,8 @@ const AuthForm = () => {
         title: "Welcome back!",
         description: "You have successfully logged in.",
       });
-    } catch (error) {
+      navigate("/");
+    } catch (error: any) {
       toast({
         title: "Error",
         description: error.message,
@@ -51,9 +54,10 @@ const AuthForm = () => {
     const email = formData.get("email") as string;
     const password = formData.get("password") as string;
     const fullName = formData.get("fullName") as string;
+    const isSeller = new URLSearchParams(window.location.search).get("mode") === "seller";
 
     try {
-      const { error } = await supabase.auth.signUp({
+      const { error: signUpError } = await supabase.auth.signUp({
         email,
         password,
         options: {
@@ -63,13 +67,31 @@ const AuthForm = () => {
         },
       });
 
-      if (error) throw error;
+      if (signUpError) throw signUpError;
+
+      // Update profile with seller status if signing up as seller
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        const { error: updateError } = await supabase
+          .from('profiles')
+          .update({ 
+            is_seller: isSeller,
+            role: isSeller ? 'farmer' : 'buyer'
+          })
+          .eq('id', session.user.id);
+
+        if (updateError) throw updateError;
+      }
 
       toast({
         title: "Account created!",
         description: "Please check your email to confirm your account.",
       });
-    } catch (error) {
+      
+      if (!signUpError) {
+        navigate("/");
+      }
+    } catch (error: any) {
       toast({
         title: "Error",
         description: error.message,
