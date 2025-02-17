@@ -4,9 +4,28 @@ import { Button } from "@/components/ui/button";
 import { CartSheet } from "@/components/CartSheet";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
 
 const Navigation = () => {
   const navigate = useNavigate();
+  const [isSeller, setIsSeller] = useState(false);
+
+  useEffect(() => {
+    checkSellerStatus();
+  }, []);
+
+  const checkSellerStatus = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session) {
+      const { data } = await supabase
+        .from('profiles')
+        .select('is_seller')
+        .eq('id', session.user.id)
+        .single();
+      
+      setIsSeller(data?.is_seller || false);
+    }
+  };
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -25,6 +44,9 @@ const Navigation = () => {
               <Link to="/market">
                 <Button variant="ghost">Market</Button>
               </Link>
+              <Link to="/farmers">
+                <Button variant="ghost">Farmers</Button>
+              </Link>
               <Link to="/about">
                 <Button variant="ghost">About</Button>
               </Link>
@@ -32,6 +54,11 @@ const Navigation = () => {
           </div>
           
           <div className="flex items-center space-x-4">
+            {isSeller && (
+              <Link to="/dashboard/products">
+                <Button variant="outline">Seller Dashboard</Button>
+              </Link>
+            )}
             <CartSheet />
             <Button variant="outline" onClick={handleLogout}>
               Logout
