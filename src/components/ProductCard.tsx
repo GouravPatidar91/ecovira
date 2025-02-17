@@ -1,10 +1,9 @@
 
-import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { useState } from "react";
+import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
+import { Leaf } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
-import { Loader2 } from "lucide-react";
+import { Messages } from "@/components/chat/Messages";
 
 interface ProductCardProps {
   id: string;
@@ -15,8 +14,8 @@ interface ProductCardProps {
   farmer: string;
   location: string;
   organic: boolean;
-  description?: string;
   quantity_available: number;
+  description: string;
 }
 
 const ProductCard = ({
@@ -28,68 +27,55 @@ const ProductCard = ({
   farmer,
   location,
   organic,
-  description,
   quantity_available,
+  description,
 }: ProductCardProps) => {
-  const [isLoading, setIsLoading] = useState(false);
-  const { addToCart, state } = useCart();
-
-  const handleAddToCart = async () => {
-    setIsLoading(true);
-    await addToCart({ id, name, price, unit, images: [image] }, 1);
-    setIsLoading(false);
-  };
-
-  const isInCart = state.items.some(item => item.product_id === id);
+  const { addToCart } = useCart();
 
   return (
-    <Card className="group overflow-hidden transition-all duration-300 hover:shadow-lg">
-      <CardContent className="p-0 relative">
-        <div className="aspect-square overflow-hidden">
-          <img
-            src={image}
-            alt={name}
-            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-          />
-        </div>
+    <Card className="overflow-hidden">
+      <div className="relative aspect-square">
+        <img
+          src={image}
+          alt={name}
+          className="object-cover w-full h-full hover:scale-105 transition-transform duration-300"
+        />
         {organic && (
-          <Badge
-            className="absolute top-2 right-2 bg-market-500 hover:bg-market-600"
-            variant="secondary"
-          >
+          <div className="absolute top-2 right-2 bg-green-500 text-white px-2 py-1 rounded-full text-xs font-medium flex items-center">
+            <Leaf className="w-3 h-3 mr-1" />
             Organic
-          </Badge>
+          </div>
         )}
-      </CardContent>
-      <CardFooter className="flex flex-col items-start p-4 space-y-2">
-        <div className="flex justify-between items-start w-full">
+      </div>
+      <CardHeader className="p-4">
+        <div className="flex justify-between items-start">
           <div>
             <h3 className="font-semibold text-lg">{name}</h3>
-            <p className="text-sm text-gray-500">
-              by {farmer} • {location}
-            </p>
+            <p className="text-gray-500 text-sm">${price} per {unit}</p>
           </div>
-          <p className="font-semibold text-market-600">
-            ${price}/{unit}
-          </p>
         </div>
-        {description && (
-          <p className="text-sm text-gray-600 line-clamp-2">{description}</p>
-        )}
-        <Button 
-          className="w-full bg-market-500 hover:bg-market-600"
-          onClick={handleAddToCart}
-          disabled={isLoading || isInCart || quantity_available === 0}
+      </CardHeader>
+      <CardContent className="p-4 pt-0">
+        <div className="text-sm text-gray-600 space-y-2">
+          <p className="font-medium text-gray-900">{farmer}</p>
+          <p>{location}</p>
+          <p className="text-xs text-gray-500">{description}</p>
+        </div>
+      </CardContent>
+      <CardFooter className="p-4 pt-0 flex justify-between items-center">
+        <Messages sellerId={id} sellerName={farmer} />
+        <Button
+          onClick={() => addToCart({
+            product_id: id,
+            name,
+            price,
+            unit,
+            image,
+            quantity: 1
+          })}
+          disabled={quantity_available === 0}
         >
-          {isLoading ? (
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-          ) : isInCart ? (
-            "In Cart"
-          ) : quantity_available === 0 ? (
-            "Out of Stock"
-          ) : (
-            "Add to Cart"
-          )}
+          {quantity_available === 0 ? "Out of Stock" : "Add to Cart"}
         </Button>
       </CardFooter>
     </Card>
