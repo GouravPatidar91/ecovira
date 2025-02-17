@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
 import { useNavigate } from "react-router-dom";
+import { Loader2 } from "lucide-react";
 
 const AuthForm = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -34,7 +35,7 @@ const AuthForm = () => {
         title: "Welcome back!",
         description: "You have successfully logged in.",
       });
-      navigate("/");
+      navigate("/market");
     } catch (error: any) {
       toast({
         title: "Error",
@@ -75,7 +76,6 @@ const AuthForm = () => {
         const { error: updateError } = await supabase
           .from('profiles')
           .update({ 
-            is_seller: isSeller,
             role: isSeller ? 'farmer' : 'buyer'
           })
           .eq('id', session.user.id);
@@ -88,9 +88,7 @@ const AuthForm = () => {
         description: "Please check your email to confirm your account.",
       });
       
-      if (!signUpError) {
-        navigate("/");
-      }
+      navigate("/market");
     } catch (error: any) {
       toast({
         title: "Error",
@@ -130,7 +128,14 @@ const AuthForm = () => {
             </CardContent>
             <CardFooter>
               <Button className="w-full" disabled={isLoading}>
-                {isLoading ? "Loading..." : "Login"}
+                {isLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Logging in...
+                  </>
+                ) : (
+                  "Login"
+                )}
               </Button>
             </CardFooter>
           </form>
@@ -160,7 +165,14 @@ const AuthForm = () => {
             </CardContent>
             <CardFooter>
               <Button className="w-full" disabled={isLoading}>
-                {isLoading ? "Creating Account..." : "Create Account"}
+                {isLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Creating Account...
+                  </>
+                ) : (
+                  "Create Account"
+                )}
               </Button>
             </CardFooter>
           </form>

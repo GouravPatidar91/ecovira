@@ -1,11 +1,13 @@
 
+import { useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import Navigation from "@/components/Navigation";
 import { Button } from "@/components/ui/button";
 import { Search, Filter } from "lucide-react";
 import ProductCard from "@/components/ProductCard";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
 
 interface Product {
   id: string;
@@ -20,17 +22,26 @@ interface Product {
   is_organic: boolean;
   quantity_available: number;
   description: string;
-  seller_id: string;  // Add this field
+  seller_id: string;
 }
 
 const Market = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   useEffect(() => {
+    checkAuth();
     fetchProducts();
   }, []);
+
+  const checkAuth = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      navigate("/auth");
+    }
+  };
 
   const fetchProducts = async () => {
     try {

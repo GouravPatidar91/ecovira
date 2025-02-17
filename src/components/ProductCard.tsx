@@ -3,7 +3,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { Leaf } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
-import { Messages } from "@/components/chat/Messages";
 
 interface ProductCardProps {
   id: string;
@@ -30,12 +29,11 @@ const ProductCard = ({
   organic,
   quantity_available,
   description,
-  seller_id,
 }: ProductCardProps) => {
   const { addToCart } = useCart();
 
   return (
-    <Card className="overflow-hidden">
+    <Card className="overflow-hidden hover:shadow-lg transition-shadow duration-300">
       <div className="relative aspect-square">
         <img
           src={image}
@@ -64,8 +62,7 @@ const ProductCard = ({
           <p className="text-xs text-gray-500">{description}</p>
         </div>
       </CardContent>
-      <CardFooter className="p-4 pt-0 flex justify-between items-center">
-        <Messages sellerId={seller_id} sellerName={farmer} />
+      <CardFooter className="p-4 pt-0 flex justify-end">
         <Button
           onClick={() => addToCart({
             product_id: id,
@@ -74,8 +71,9 @@ const ProductCard = ({
             unit,
             image,
             quantity: 1
-          }, false)}
+          }, 1)}
           disabled={quantity_available === 0}
+          className="w-full sm:w-auto"
         >
           {quantity_available === 0 ? "Out of Stock" : "Add to Cart"}
         </Button>
