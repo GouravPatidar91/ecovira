@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
@@ -8,6 +9,7 @@ import { useNavigate } from "react-router-dom";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 export function CartSheet() {
   const { state: { items, loading }, updateQuantity, removeFromCart } = useCart();
@@ -15,6 +17,7 @@ export function CartSheet() {
   const [shippingAddress, setShippingAddress] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
   const navigate = useNavigate();
+  const { toast } = useToast();
 
   const totalAmount = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
 
@@ -35,10 +38,23 @@ export function CartSheet() {
     try {
       setIsProcessing(true);
       
-      // Create the order
+      // Get the current user's ID
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      
+      if (sessionError || !session) {
+        toast({
+          title: "Authentication Error",
+          description: "Please login to complete your order",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Create the order with buyer_id
       const { data: orderData, error: orderError } = await supabase
         .from('orders')
         .insert({
+          buyer_id: session.user.id,
           total_amount: totalAmount,
           shipping_address: shippingAddress,
           status: 'pending',
@@ -47,7 +63,14 @@ export function CartSheet() {
         .select()
         .single();
 
-      if (orderError) throw orderError;
+      if (orderError) {
+        toast({
+          title: "Error",
+          description: "Failed to create order",
+          variant: "destructive",
+        });
+        throw orderError;
+      }
 
       // Create order items
       const orderItems = items.map(item => ({
@@ -62,12 +85,24 @@ export function CartSheet() {
         .from('order_items')
         .insert(orderItems);
 
-      if (itemsError) throw itemsError;
+      if (itemsError) {
+        toast({
+          title: "Error",
+          description: "Failed to create order items",
+          variant: "destructive",
+        });
+        throw itemsError;
+      }
 
       // Clear cart items
       for (const item of items) {
         await removeFromCart(item.product_id);
       }
+
+      toast({
+        title: "Success",
+        description: "Your order has been placed successfully",
+      });
 
       setIsCheckoutDialogOpen(false);
       navigate('/market');
