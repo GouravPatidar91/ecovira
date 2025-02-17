@@ -1,3 +1,4 @@
+
 import Navigation from "@/components/Navigation";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
@@ -30,15 +31,20 @@ const Farmers = () => {
   }, []);
 
   const checkSellerStatus = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (session) {
-      const { data } = await supabase
-        .from('profiles')
-        .select('role, is_seller')
-        .eq('id', session.user.id)
-        .maybeSingle();
-      
-      setIsSeller(!!data?.is_seller || data?.role === 'farmer' || false);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('role, is_seller')
+          .eq('id', session.user.id)
+          .maybeSingle();
+
+        if (error) throw error;
+        setIsSeller(!!data?.is_seller || data?.role === 'farmer' || false);
+      }
+    } catch (error) {
+      console.error('Error checking seller status:', error);
     }
   };
 
@@ -50,7 +56,19 @@ const Farmers = () => {
         .or('is_seller.eq.true,role.eq.farmer');
 
       if (error) throw error;
-      setSellers(data || []);
+      
+      // Map the data to ensure all required fields are present
+      const mappedSellers: Seller[] = (data || []).map(seller => ({
+        id: seller.id,
+        business_name: seller.business_name,
+        location: seller.location,
+        bio: seller.bio,
+        is_seller: !!seller.is_seller,
+        avatar_url: seller.avatar_url,
+        role: seller.role || 'buyer'
+      }));
+      
+      setSellers(mappedSellers);
     } catch (error) {
       toast({
         title: "Error",

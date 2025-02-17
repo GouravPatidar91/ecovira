@@ -1,4 +1,3 @@
-
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -44,21 +43,19 @@ export function Messages({ sellerId, sellerName }: MessagesProps) {
     const fetchMessages = async () => {
       setLoading(true);
       try {
-        const { data: session } = await supabase.auth.getSession();
+        const { data: { session } } = await supabase.auth.getSession();
         if (!session.session) return;
 
         const { data, error } = await supabase
           .from('messages')
           .select(`
-            id,
-            content,
-            created_at,
-            sender_id,
-            receiver_id,
-            sender:profiles!sender_id(business_name, full_name)
+            *,
+            sender:profiles(business_name, full_name)
           `)
-          .or(`sender_id.eq.${session.session.user.id},receiver_id.eq.${session.session.user.id}`)
-          .or(`sender_id.eq.${sellerId},receiver_id.eq.${sellerId}`)
+          .or(
+            `and(sender_id.eq.${session.session.user.id},receiver_id.eq.${sellerId}),` +
+            `and(sender_id.eq.${sellerId},receiver_id.eq.${session.session.user.id})`
+          )
           .order('created_at', { ascending: true });
 
         if (error) throw error;
@@ -78,17 +75,16 @@ export function Messages({ sellerId, sellerName }: MessagesProps) {
     fetchMessages();
 
     const channel = supabase
-      .channel('messages_channel')
+      .channel('messages_changes')
       .on(
         'postgres_changes',
         {
           event: 'INSERT',
           schema: 'public',
-          table: 'messages',
+          table: 'messages'
         },
         (payload) => {
-          const newMessage = payload.new as Message;
-          setMessages((current) => [...current, newMessage]);
+          setMessages(current => [...current, payload.new as Message]);
         }
       )
       .subscribe();
@@ -103,7 +99,7 @@ export function Messages({ sellerId, sellerName }: MessagesProps) {
 
     setSending(true);
     try {
-      const { data: session } = await supabase.auth.getSession();
+      const { data: { session } } = await supabase.auth.getSession();
       if (!session.session) {
         toast({
           title: "Error",
@@ -118,11 +114,10 @@ export function Messages({ sellerId, sellerName }: MessagesProps) {
         .insert({
           content: newMessage.trim(),
           sender_id: session.session.user.id,
-          receiver_id: sellerId,
+          receiver_id: sellerId
         });
 
       if (error) throw error;
-
       setNewMessage("");
     } catch (error) {
       console.error('Error sending message:', error);
