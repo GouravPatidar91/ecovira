@@ -13,9 +13,8 @@ interface Seller {
   business_name: string | null;
   location: string | null;
   bio: string | null;
-  is_seller: boolean;
-  avatar_url: string | null;
   role: 'farmer' | 'buyer' | 'admin';
+  avatar_url: string | null;
 }
 
 const Farmers = () => {
@@ -36,12 +35,12 @@ const Farmers = () => {
       if (session) {
         const { data, error } = await supabase
           .from('profiles')
-          .select('role, is_seller')
+          .select('role')
           .eq('id', session.user.id)
-          .maybeSingle();
+          .single();
 
         if (error) throw error;
-        setIsSeller(!!data?.is_seller || data?.role === 'farmer' || false);
+        setIsSeller(data.role === 'farmer');
       }
     } catch (error) {
       console.error('Error checking seller status:', error);
@@ -52,23 +51,11 @@ const Farmers = () => {
     try {
       const { data, error } = await supabase
         .from('profiles')
-        .select('*')
-        .or('is_seller.eq.true,role.eq.farmer');
+        .select('id, business_name, location, bio, role, avatar_url')
+        .eq('role', 'farmer');
 
       if (error) throw error;
-      
-      // Map the data to ensure all required fields are present
-      const mappedSellers: Seller[] = (data || []).map(seller => ({
-        id: seller.id,
-        business_name: seller.business_name,
-        location: seller.location,
-        bio: seller.bio,
-        is_seller: !!seller.is_seller,
-        avatar_url: seller.avatar_url,
-        role: seller.role || 'buyer'
-      }));
-      
-      setSellers(mappedSellers);
+      setSellers(data || []);
     } catch (error) {
       toast({
         title: "Error",
@@ -151,19 +138,14 @@ const Farmers = () => {
                     <div className="relative">
                       <img
                         src={seller.avatar_url || "https://via.placeholder.com/64"}
-                        alt={seller.business_name}
+                        alt={seller.business_name || "Farmer"}
                         className="w-16 h-16 rounded-full object-cover"
                       />
-                      {seller.is_organic && (
-                        <div className="absolute -top-1 -right-1 bg-green-500 text-white p-1 rounded-full">
-                          <Leaf className="w-3 h-3" />
-                        </div>
-                      )}
                     </div>
                     <div className="flex-1">
-                      <h3 className="text-lg font-semibold">{seller.business_name}</h3>
-                      <p className="text-gray-500 text-sm">{seller.location}</p>
-                      <p className="text-gray-600 mt-2">{seller.bio}</p>
+                      <h3 className="text-lg font-semibold">{seller.business_name || "Unknown Farmer"}</h3>
+                      <p className="text-gray-500 text-sm">{seller.location || "Location not specified"}</p>
+                      <p className="text-gray-600 mt-2">{seller.bio || "No bio available"}</p>
                       <div className="flex gap-2 mt-4">
                         <Button
                           variant="outline"
@@ -173,13 +155,7 @@ const Farmers = () => {
                           <ShoppingBasket className="w-4 h-4 mr-1" />
                           View Products
                         </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                        >
-                          <MessageCircle className="w-4 h-4 mr-1" />
-                          Contact
-                        </Button>
+                        <Messages sellerId={seller.id} sellerName={seller.business_name || "Farmer"} />
                       </div>
                     </div>
                   </div>

@@ -6,6 +6,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 
+type Profile = {
+  role: 'farmer' | 'buyer' | 'admin';
+  is_seller: boolean;
+};
+
 const Navigation = () => {
   const navigate = useNavigate();
   const [isSeller, setIsSeller] = useState(false);
@@ -15,15 +20,20 @@ const Navigation = () => {
   }, []);
 
   const checkSellerStatus = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (session) {
-      const { data } = await supabase
-        .from('profiles')
-        .select('role, is_seller')
-        .eq('id', session.user.id)
-        .maybeSingle();
-      
-      setIsSeller(!!data?.is_seller || data?.role === 'farmer' || false);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', session.user.id)
+          .single();
+        
+        if (error) throw error;
+        setIsSeller(data.role === 'farmer');
+      }
+    } catch (error) {
+      console.error('Error checking seller status:', error);
     }
   };
 
