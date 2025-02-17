@@ -74,7 +74,7 @@ const ProductCard = ({
             unit,
             image,
             quantity: 1
-          })}
+          }, false)}
           disabled={quantity_available === 0}
         >
           {quantity_available === 0 ? "Out of Stock" : "Add to Cart"}
