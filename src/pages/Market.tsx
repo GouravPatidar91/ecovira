@@ -20,6 +20,7 @@ interface Product {
   is_organic: boolean;
   quantity_available: number;
   description: string;
+  seller_id: string;  // Add this field
 }
 
 const Market = () => {
@@ -44,6 +45,7 @@ const Market = () => {
           is_organic,
           quantity_available,
           description,
+          seller_id,
           seller:profiles (
             business_name,
             location
@@ -127,6 +129,7 @@ const Market = () => {
                   organic={product.is_organic}
                   quantity_available={product.quantity_available}
                   description={product.description}
+                  seller_id={product.seller_id}  // Pass seller_id to ProductCard
                 />
               ))}
             </div>

@@ -16,6 +16,7 @@ interface ProductCardProps {
   organic: boolean;
   quantity_available: number;
   description: string;
+  seller_id: string;  // Add this prop
 }
 
 const ProductCard = ({
@@ -29,6 +30,7 @@ const ProductCard = ({
   organic,
   quantity_available,
   description,
+  seller_id,  // Add this prop
 }: ProductCardProps) => {
   const { addToCart } = useCart();
 
@@ -63,7 +65,7 @@ const ProductCard = ({
         </div>
       </CardContent>
       <CardFooter className="p-4 pt-0 flex justify-between items-center">
-        <Messages sellerId={id} sellerName={farmer} />
+        <Messages sellerId={seller_id} sellerName={farmer} />
         <Button
           onClick={() => addToCart({
             product_id: id,
