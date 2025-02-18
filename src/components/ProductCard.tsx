@@ -65,12 +65,11 @@ const ProductCard = ({
       <CardFooter className="p-4 pt-0 flex justify-end">
         <Button
           onClick={() => addToCart({
-            product_id: id,
+            id,
             name,
             price,
             unit,
-            image,
-            quantity: 1
+            images: [image],
           }, 1)}
           disabled={quantity_available === 0}
           className="w-full sm:w-auto"
