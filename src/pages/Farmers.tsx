@@ -22,6 +22,11 @@ interface Seller {
   avatar_url: string | null;
 }
 
+interface Profile {
+  verification_status: 'unverified' | 'pending' | 'verified' | 'rejected';
+  role: 'farmer' | 'buyer' | 'admin';
+}
+
 const Farmers = () => {
   const navigate = useNavigate();
   const [sellers, setSellers] = useState<Seller[]>([]);
@@ -81,11 +86,16 @@ const Farmers = () => {
     const { data: { session } } = await supabase.auth.getSession();
     if (session) {
       // Check if user needs verification
-      const { data: profile } = await supabase
+      const { data: profile, error } = await supabase
         .from('profiles')
         .select('verification_status')
         .eq('id', session.user.id)
         .single();
+
+      if (error) {
+        console.error('Error fetching profile:', error);
+        return;
+      }
 
       if (profile?.verification_status === 'pending') {
         toast({

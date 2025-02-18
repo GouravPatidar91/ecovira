@@ -210,6 +210,8 @@ export type Database = {
           location: string | null
           role: Database["public"]["Enums"]["user_role"] | null
           updated_at: string
+          verification_document: string | null
+          verification_status: string | null
         }
         Insert: {
           avatar_url?: string | null
@@ -221,6 +223,8 @@ export type Database = {
           location?: string | null
           role?: Database["public"]["Enums"]["user_role"] | null
           updated_at?: string
+          verification_document?: string | null
+          verification_status?: string | null
         }
         Update: {
           avatar_url?: string | null
@@ -232,6 +236,8 @@ export type Database = {
           location?: string | null
           role?: Database["public"]["Enums"]["user_role"] | null
           updated_at?: string
+          verification_document?: string | null
+          verification_status?: string | null
         }
         Relationships: []
       }

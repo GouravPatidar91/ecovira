@@ -55,11 +55,11 @@ const SellerVerification = () => {
 
       if (uploadError) throw uploadError;
 
-      // Update profile verification status
+      // Update profile verification status and role
       const { error: updateError } = await supabase
         .from('profiles')
         .update({
-          verification_document: fileName,
+          role: 'farmer',
           verification_status: 'pending'
         })
         .eq('id', session.user.id);
