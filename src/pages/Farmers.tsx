@@ -2,11 +2,10 @@
 import Navigation from "@/components/Navigation";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
-import { Leaf, ShoppingBasket, MessageCircle, Tractor } from "lucide-react";
+import { ShoppingBasket, Tractor } from "lucide-react";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Messages } from "@/components/chat/Messages";
 
 interface Seller {
   id: string;
@@ -151,11 +150,11 @@ const Farmers = () => {
                           variant="outline"
                           size="sm"
                           onClick={() => navigate(`/market?seller=${seller.id}`)}
+                          className="w-full"
                         >
                           <ShoppingBasket className="w-4 h-4 mr-1" />
                           View Products
                         </Button>
-                        <Messages sellerId={seller.id} sellerName={seller.business_name || "Farmer"} />
                       </div>
                     </div>
                   </div>
