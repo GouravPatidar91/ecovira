@@ -3,7 +3,7 @@ import { useState } from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { ShoppingCart, Minus, Plus, Loader2 } from "lucide-react";
+import { ShoppingCart, Minus, Plus, Loader2, Trash2 } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
 import { useNavigate } from "react-router-dom";
 import { Input } from "@/components/ui/input";
@@ -12,7 +12,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
 export function CartSheet() {
-  const { state: { items, loading }, updateQuantity, removeFromCart } = useCart();
+  const { state: { items, loading }, updateQuantity, removeFromCart, clearCart } = useCart();
   const [isCheckoutDialogOpen, setIsCheckoutDialogOpen] = useState(false);
   const [shippingAddress, setShippingAddress] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
@@ -38,10 +38,9 @@ export function CartSheet() {
     try {
       setIsProcessing(true);
       
-      // Get the current user's ID
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      const { data: { session } } = await supabase.auth.getSession();
       
-      if (sessionError || !session) {
+      if (!session) {
         toast({
           title: "Authentication Error",
           description: "Please login to complete your order",
@@ -50,7 +49,7 @@ export function CartSheet() {
         return;
       }
 
-      // Create the order with buyer_id
+      // Create the order
       const { data: orderData, error: orderError } = await supabase
         .from('orders')
         .insert({
@@ -63,14 +62,7 @@ export function CartSheet() {
         .select()
         .single();
 
-      if (orderError) {
-        toast({
-          title: "Error",
-          description: "Failed to create order",
-          variant: "destructive",
-        });
-        throw orderError;
-      }
+      if (orderError) throw orderError;
 
       // Create order items
       const orderItems = items.map(item => ({
@@ -85,19 +77,10 @@ export function CartSheet() {
         .from('order_items')
         .insert(orderItems);
 
-      if (itemsError) {
-        toast({
-          title: "Error",
-          description: "Failed to create order items",
-          variant: "destructive",
-        });
-        throw itemsError;
-      }
+      if (itemsError) throw itemsError;
 
-      // Clear cart items
-      for (const item of items) {
-        await removeFromCart(item.product_id);
-      }
+      // Clear the cart
+      await clearCart();
 
       toast({
         title: "Success",
@@ -108,6 +91,11 @@ export function CartSheet() {
       navigate('/market');
     } catch (error) {
       console.error('Error during checkout:', error);
+      toast({
+        title: "Error",
+        description: "Failed to process your order",
+        variant: "destructive",
+      });
     } finally {
       setIsProcessing(false);
     }
@@ -125,9 +113,22 @@ export function CartSheet() {
           )}
         </Button>
       </SheetTrigger>
-      <SheetContent>
+      <SheetContent className="w-full sm:max-w-md">
         <SheetHeader>
-          <SheetTitle>Shopping Cart</SheetTitle>
+          <SheetTitle className="flex justify-between items-center">
+            Shopping Cart
+            {items.length > 0 && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={clearCart}
+                className="text-red-500 hover:text-red-600"
+              >
+                <Trash2 className="h-4 w-4 mr-1" />
+                Clear Cart
+              </Button>
+            )}
+          </SheetTitle>
         </SheetHeader>
         
         {loading ? (
@@ -145,7 +146,7 @@ export function CartSheet() {
               <div key={item.id} className="flex items-center space-x-4">
                 <div className="relative h-16 w-16 rounded-md overflow-hidden">
                   <img
-                    src={item.image || "https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&q=80"}
+                    src={item.image || "https://via.placeholder.com/64"}
                     alt={item.name}
                     className="object-cover h-full w-full"
                   />
@@ -177,6 +178,14 @@ export function CartSheet() {
                 </div>
                 <div className="text-right">
                   <p className="font-medium">${(item.price * item.quantity).toFixed(2)}</p>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => removeFromCart(item.product_id)}
+                    className="text-red-500 hover:text-red-600 mt-2"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
                 </div>
               </div>
             ))}
@@ -208,7 +217,9 @@ export function CartSheet() {
           </AlertDialogHeader>
           
           <div className="space-y-4 py-4">
-            <div className="space-y-2">
+            <div className="space
+
+-y-2">
               <Label htmlFor="shipping">Shipping Address</Label>
               <Input
                 id="shipping"
