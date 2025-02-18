@@ -6,6 +6,13 @@ import { ShoppingBasket, Tractor } from "lucide-react";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 
 interface Seller {
   id: string;
@@ -22,6 +29,7 @@ const Farmers = () => {
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
   const [isSeller, setIsSeller] = useState(false);
+  const [isSellerPanelOpen, setIsSellerPanelOpen] = useState(false);
 
   useEffect(() => {
     fetchSellers();
@@ -66,6 +74,10 @@ const Farmers = () => {
     }
   };
 
+  const handleJoinAsFarmer = () => {
+    setIsSellerPanelOpen(true);
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       <Navigation />
@@ -84,7 +96,7 @@ const Farmers = () => {
               <Button 
                 size="lg"
                 className="bg-market-600 hover:bg-market-700"
-                onClick={() => navigate("/auth?mode=seller")}
+                onClick={handleJoinAsFarmer}
               >
                 <Tractor className="mr-2 h-5 w-5" />
                 Join as a Farmer
@@ -164,6 +176,40 @@ const Farmers = () => {
           )}
         </div>
       </section>
+
+      {/* Seller Registration Sheet */}
+      <Sheet open={isSellerPanelOpen} onOpenChange={setIsSellerPanelOpen}>
+        <SheetContent>
+          <SheetHeader>
+            <SheetTitle>Become a Farmer</SheetTitle>
+            <SheetDescription>
+              Join our community of local farmers and start selling your produce today.
+            </SheetDescription>
+          </SheetHeader>
+          <div className="mt-6 space-y-4">
+            <p className="text-sm text-gray-600">
+              To become a farmer on our platform, you'll need to:
+            </p>
+            <ul className="list-disc list-inside text-sm text-gray-600 space-y-2">
+              <li>Create an account or sign in</li>
+              <li>Complete your business profile</li>
+              <li>Add your products</li>
+              <li>Start selling to local customers</li>
+            </ul>
+            <div className="pt-6">
+              <Button 
+                className="w-full"
+                onClick={() => {
+                  setIsSellerPanelOpen(false);
+                  navigate("/auth?mode=seller");
+                }}
+              >
+                Continue to Registration
+              </Button>
+            </div>
+          </div>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 };
