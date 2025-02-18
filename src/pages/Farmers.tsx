@@ -1,4 +1,3 @@
-
 import Navigation from "@/components/Navigation";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
@@ -76,6 +75,39 @@ const Farmers = () => {
 
   const handleJoinAsFarmer = () => {
     setIsSellerPanelOpen(true);
+  };
+
+  const handleContinueToRegistration = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session) {
+      // Check if user needs verification
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('verification_status')
+        .eq('id', session.user.id)
+        .single();
+
+      if (profile?.verification_status === 'pending') {
+        toast({
+          title: "Verification Pending",
+          description: "Your seller verification is still under review",
+        });
+        setIsSellerPanelOpen(false);
+        return;
+      }
+
+      if (profile?.verification_status === 'verified') {
+        navigate('/dashboard/products');
+        return;
+      }
+
+      // If not verified, redirect to verification
+      navigate('/seller-verification');
+    } else {
+      // If not logged in, redirect to auth
+      navigate('/auth?mode=seller');
+    }
+    setIsSellerPanelOpen(false);
   };
 
   return (
@@ -193,16 +225,14 @@ const Farmers = () => {
             <ul className="list-disc list-inside text-sm text-gray-600 space-y-2">
               <li>Create an account or sign in</li>
               <li>Complete your business profile</li>
+              <li>Upload verification documents</li>
               <li>Add your products</li>
               <li>Start selling to local customers</li>
             </ul>
             <div className="pt-6">
               <Button 
                 className="w-full"
-                onClick={() => {
-                  setIsSellerPanelOpen(false);
-                  navigate("/auth?mode=seller");
-                }}
+                onClick={handleContinueToRegistration}
               >
                 Continue to Registration
               </Button>
