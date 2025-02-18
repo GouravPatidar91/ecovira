@@ -155,7 +155,7 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
         .select('id, quantity')
         .eq('user_id', session.user.id)
         .eq('product_id', product.id)
-        .single();
+        .maybeSingle();
 
       if (existingItem) {
         // Update quantity if item exists
