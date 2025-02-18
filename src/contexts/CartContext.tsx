@@ -18,6 +18,14 @@ interface CartState {
   loading: boolean;
 }
 
+interface Product {
+  id: string;
+  name: string;
+  price: number;
+  unit: string;
+  images?: string[];
+}
+
 type CartAction =
   | { type: 'SET_CART'; payload: CartItem[] }
   | { type: 'ADD_ITEM'; payload: CartItem }
@@ -29,7 +37,7 @@ type CartAction =
 const CartContext = createContext<{
   state: CartState;
   dispatch: React.Dispatch<CartAction>;
-  addToCart: (product: any, quantity: number) => Promise<void>;
+  addToCart: (product: Product, quantity: number) => Promise<void>;
   removeFromCart: (productId: string) => Promise<void>;
   updateQuantity: (itemId: string, quantity: number) => Promise<void>;
   clearCart: () => Promise<void>;
@@ -114,7 +122,6 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
 
     loadCart();
 
-    // Subscribe to cart changes
     const channel = supabase
       .channel('cart_changes')
       .on(
@@ -135,7 +142,18 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
     };
   }, []);
 
-  const addToCart = async (product: any, quantity: number) => {
+  const addToCart = async (product: Product, quantity: number) => {
+    // Validate product object
+    if (!product?.id) {
+      console.error('Invalid product object:', product);
+      toast({
+        title: "Error",
+        description: "Invalid product data",
+        variant: "destructive",
+      });
+      return;
+    }
+
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) {
       toast({
@@ -150,22 +168,24 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
       dispatch({ type: 'SET_LOADING', payload: true });
 
       // Check if item already exists in cart
-      const { data: existingItem } = await supabase
+      const { data: existingItem, error: queryError } = await supabase
         .from('cart_items')
         .select('id, quantity')
         .eq('user_id', session.user.id)
         .eq('product_id', product.id)
         .maybeSingle();
 
+      if (queryError) throw queryError;
+
       if (existingItem) {
         // Update quantity if item exists
         const newQuantity = existingItem.quantity + quantity;
-        const { error } = await supabase
+        const { error: updateError } = await supabase
           .from('cart_items')
           .update({ quantity: newQuantity })
           .eq('id', existingItem.id);
 
-        if (error) throw error;
+        if (updateError) throw updateError;
 
         dispatch({
           type: 'UPDATE_QUANTITY',
@@ -173,7 +193,7 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
         });
       } else {
         // Add new item if it doesn't exist
-        const { data, error } = await supabase
+        const { data: insertedItem, error: insertError } = await supabase
           .from('cart_items')
           .insert({
             user_id: session.user.id,
@@ -183,10 +203,10 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
           .select('id')
           .single();
 
-        if (error) throw error;
+        if (insertError) throw insertError;
 
         const cartItem: CartItem = {
-          id: data.id,
+          id: insertedItem.id,
           product_id: product.id,
           quantity,
           name: product.name,
@@ -215,6 +235,11 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const removeFromCart = async (productId: string) => {
+    if (!productId) {
+      console.error('Invalid product ID:', productId);
+      return;
+    }
+
     try {
       dispatch({ type: 'SET_LOADING', payload: true });
       const { error } = await supabase
@@ -242,6 +267,11 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const updateQuantity = async (itemId: string, quantity: number) => {
+    if (!itemId) {
+      console.error('Invalid item ID:', itemId);
+      return;
+    }
+
     try {
       dispatch({ type: 'SET_LOADING', payload: true });
       const { error } = await supabase
