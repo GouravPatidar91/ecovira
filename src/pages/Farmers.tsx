@@ -5,11 +5,11 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { CartProvider } from "@/contexts/CartContext";
-import { Seller } from "./types";
-import FarmerHero from "./components/FarmerHero";
-import SellerCard from "./components/SellerCard";
-import SellerDashboard from "./components/SellerDashboard";
-import SellerRegistrationSheet from "./components/SellerRegistrationSheet";
+import { Seller } from "./Farmers/types";
+import FarmerHero from "./Farmers/components/FarmerHero";
+import SellerCard from "./Farmers/components/SellerCard";
+import SellerDashboard from "./Farmers/components/SellerDashboard";
+import SellerRegistrationSheet from "./Farmers/components/SellerRegistrationSheet";
 
 const Farmers = () => {
   const navigate = useNavigate();
