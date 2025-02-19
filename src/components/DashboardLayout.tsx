@@ -1,9 +1,10 @@
 
-import { ReactNode } from "react";
+import { ReactNode, useEffect, useState } from "react";
 import Navigation from "./Navigation";
 import { Button } from "./ui/button";
 import { useNavigate } from "react-router-dom";
-import { Package, List, ShoppingBag } from "lucide-react";
+import { Package, List, ShoppingBag, FileCheck } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -11,6 +12,28 @@ interface DashboardLayoutProps {
 
 const DashboardLayout = ({ children }: DashboardLayoutProps) => {
   const navigate = useNavigate();
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    checkAdminStatus();
+  }, []);
+
+  const checkAdminStatus = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        const { data } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', session.user.id)
+          .single();
+
+        setIsAdmin(data?.role === 'admin');
+      }
+    } catch (error) {
+      console.error('Error checking admin status:', error);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -43,6 +66,16 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
               <ShoppingBag className="mr-2 h-4 w-4" />
               Inventory
             </Button>
+            {isAdmin && (
+              <Button 
+                variant="ghost" 
+                className="w-full justify-start"
+                onClick={() => navigate("/dashboard/verifications")}
+              >
+                <FileCheck className="mr-2 h-4 w-4" />
+                Verifications
+              </Button>
+            )}
           </div>
           {/* Main Content */}
           <div className="col-span-12 md:col-span-9">
