@@ -1,137 +1,151 @@
 
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Upload, Loader2 } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
 import Navigation from "@/components/Navigation";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { useNavigate } from "react-router-dom";
+import { useState } from "react";
+import { CartProvider } from "@/contexts/CartContext";
 
 const SellerVerification = () => {
-  const [isUploading, setIsUploading] = useState(false);
-  const [document, setDocument] = useState<File | null>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
+  const [loading, setLoading] = useState(false);
+  const [formData, setFormData] = useState({
+    businessName: "",
+    location: "",
+    bio: "",
+    document: null as File | null,
+  });
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      setDocument(e.target.files[0]);
+      setFormData(prev => ({ ...prev, document: e.target.files![0] }));
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!document) {
-      toast({
-        title: "Error",
-        description: "Please select a document to upload",
-        variant: "destructive",
-      });
-      return;
-    }
+    setLoading(true);
 
     try {
-      setIsUploading(true);
       const { data: { session } } = await supabase.auth.getSession();
-      
       if (!session) {
-        toast({
-          title: "Error",
-          description: "Please login to continue",
-          variant: "destructive",
-        });
+        navigate('/auth');
         return;
       }
 
-      // Upload document
-      const fileExt = document.name.split('.').pop();
-      const fileName = `${session.user.id}-${Math.random()}.${fileExt}`;
-      const { error: uploadError } = await supabase.storage
-        .from('seller-documents')
-        .upload(fileName, document);
-
-      if (uploadError) throw uploadError;
-
-      // Update profile verification status and role
-      const { error: updateError } = await supabase
+      // Update profile with business details
+      const { error: profileError } = await supabase
         .from('profiles')
         .update({
-          role: 'farmer',
-          verification_status: 'pending'
+          business_name: formData.businessName,
+          location: formData.location,
+          bio: formData.bio,
+          verification_status: 'pending',
+          role: 'farmer'
         })
         .eq('id', session.user.id);
 
-      if (updateError) throw updateError;
+      if (profileError) throw profileError;
+
+      // Upload verification document if provided
+      if (formData.document) {
+        const fileExt = formData.document.name.split('.').pop();
+        const filePath = `verification/${session.user.id}/document.${fileExt}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from('documents')
+          .upload(filePath, formData.document);
+
+        if (uploadError) throw uploadError;
+      }
 
       toast({
-        title: "Success",
-        description: "Your document has been uploaded and is pending verification",
+        title: "Verification Submitted",
+        description: "Your seller verification request has been submitted for review.",
       });
 
       navigate('/farmers');
     } catch (error) {
-      console.error('Error uploading document:', error);
+      console.error('Error during verification:', error);
       toast({
         title: "Error",
-        description: "Failed to upload document",
+        description: "Failed to submit verification request",
         variant: "destructive",
       });
     } finally {
-      setIsUploading(false);
+      setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Navigation />
-      <div className="container mx-auto px-4 py-16">
-        <Card className="max-w-md mx-auto">
-          <CardHeader>
-            <CardTitle>Seller Verification</CardTitle>
-            <CardDescription>
-              Please upload a government-issued ID document to verify your identity
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="space-y-2">
-                <Label htmlFor="document">Government ID</Label>
-                <Input
-                  id="document"
-                  type="file"
-                  accept="image/*,.pdf"
-                  onChange={handleFileChange}
-                  disabled={isUploading}
-                />
-                <p className="text-sm text-gray-500">
-                  Supported formats: JPEG, PNG, PDF (max 5MB)
-                </p>
-              </div>
-              <Button
-                type="submit"
-                disabled={isUploading || !document}
-                className="w-full"
-              >
-                {isUploading ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Uploading...
-                  </>
-                ) : (
-                  <>
-                    <Upload className="mr-2 h-4 w-4" />
-                    Upload Document
-                  </>
-                )}
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
+    <CartProvider>
+      <div className="min-h-screen bg-gray-50">
+        <Navigation />
+        
+        <div className="pt-24 pb-12">
+          <div className="container mx-auto max-w-2xl px-4">
+            <div className="bg-white rounded-lg shadow-sm p-6">
+              <h1 className="text-2xl font-semibold mb-6">Seller Verification</h1>
+              
+              <form onSubmit={handleSubmit} className="space-y-6">
+                <div className="space-y-2">
+                  <Label htmlFor="businessName">Business Name</Label>
+                  <Input
+                    id="businessName"
+                    value={formData.businessName}
+                    onChange={(e) => setFormData(prev => ({ ...prev, businessName: e.target.value }))}
+                    required
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="location">Location</Label>
+                  <Input
+                    id="location"
+                    value={formData.location}
+                    onChange={(e) => setFormData(prev => ({ ...prev, location: e.target.value }))}
+                    required
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="bio">Business Description</Label>
+                  <Textarea
+                    id="bio"
+                    value={formData.bio}
+                    onChange={(e) => setFormData(prev => ({ ...prev, bio: e.target.value }))}
+                    required
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="document">Verification Document</Label>
+                  <Input
+                    id="document"
+                    type="file"
+                    onChange={handleFileChange}
+                    accept=".pdf,.jpg,.jpeg,.png"
+                    required
+                  />
+                  <p className="text-sm text-gray-500">
+                    Please upload a business license or any other relevant documentation
+                  </p>
+                </div>
+
+                <Button type="submit" disabled={loading} className="w-full">
+                  {loading ? "Submitting..." : "Submit for Verification"}
+                </Button>
+              </form>
+            </div>
+          </div>
+        </div>
       </div>
-    </div>
+    </CartProvider>
   );
 };
 
