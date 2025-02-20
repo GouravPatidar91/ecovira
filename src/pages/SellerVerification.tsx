@@ -23,7 +23,9 @@ const SellerVerification = () => {
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      setFormData(prev => ({ ...prev, document: e.target.files![0] }));
+      const file = e.target.files[0];
+      console.log('Selected file:', file.name, 'Size:', file.size, 'Type:', file.type);
+      setFormData(prev => ({ ...prev, document: file }));
     }
   };
 
@@ -34,6 +36,11 @@ const SellerVerification = () => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
+        toast({
+          title: "Authentication Required",
+          description: "Please sign in to continue.",
+          variant: "destructive",
+        });
         navigate('/auth');
         return;
       }
@@ -41,29 +48,34 @@ const SellerVerification = () => {
       let documentUrl = null;
 
       if (formData.document) {
+        console.log('Starting document upload...');
         const fileExt = formData.document.name.split('.').pop();
-        // Simplified file path structure
-        const fileName = `${session.user.id}/document.${fileExt}`;
+        const fileName = `${session.user.id}-${Date.now()}.${fileExt}`;
 
-        const { error: uploadError } = await supabase.storage
+        console.log('Uploading file:', fileName);
+        const { error: uploadError, data: uploadData } = await supabase.storage
           .from('documents')
           .upload(fileName, formData.document, {
             cacheControl: '3600',
-            upsert: true // Allow overwriting existing file
+            upsert: true
           });
 
         if (uploadError) {
-          console.error('Upload error:', uploadError);
-          throw new Error('Failed to upload document. Please try again.');
+          console.error('Upload error details:', uploadError);
+          throw new Error(`Failed to upload document: ${uploadError.message}`);
         }
+
+        console.log('Upload successful:', uploadData);
 
         const { data: { publicUrl } } = supabase.storage
           .from('documents')
           .getPublicUrl(fileName);
 
+        console.log('Generated public URL:', publicUrl);
         documentUrl = publicUrl;
       }
 
+      console.log('Updating profile with document URL:', documentUrl);
       const { error: profileError } = await supabase
         .from('profiles')
         .update({
@@ -77,7 +89,8 @@ const SellerVerification = () => {
         .eq('id', session.user.id);
 
       if (profileError) {
-        throw new Error('Failed to update profile');
+        console.error('Profile update error:', profileError);
+        throw new Error(`Failed to update profile: ${profileError.message}`);
       }
 
       toast({
