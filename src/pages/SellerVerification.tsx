@@ -40,40 +40,30 @@ const SellerVerification = () => {
 
       let documentUrl = null;
 
-      // Upload verification document if provided
       if (formData.document) {
-        try {
-          // Generate a unique filename to avoid conflicts
-          const fileExt = formData.document.name.split('.').pop();
-          const uniqueId = `${Date.now()}-${Math.random().toString(36).substring(2)}`;
-          const fileName = `verification/${session.user.id}/${uniqueId}.${fileExt}`;
+        const fileExt = formData.document.name.split('.').pop();
+        // Simplified file path structure
+        const fileName = `${session.user.id}/document.${fileExt}`;
 
-          // First, try to upload the file
-          const { error: uploadError, data } = await supabase.storage
-            .from('documents')
-            .upload(fileName, formData.document, {
-              cacheControl: '3600',
-              upsert: false // Set to false to prevent overwriting existing files
-            });
+        const { error: uploadError } = await supabase.storage
+          .from('documents')
+          .upload(fileName, formData.document, {
+            cacheControl: '3600',
+            upsert: true // Allow overwriting existing file
+          });
 
-          if (uploadError) {
-            console.error('Upload error details:', uploadError);
-            throw new Error(`Failed to upload document: ${uploadError.message}`);
-          }
-
-          // If upload successful, get the public URL
-          const { data: { publicUrl } } = supabase.storage
-            .from('documents')
-            .getPublicUrl(fileName);
-
-          documentUrl = publicUrl;
-        } catch (uploadError) {
-          console.error('Document upload error:', uploadError);
-          throw new Error('Failed to upload verification document. Please try again.');
+        if (uploadError) {
+          console.error('Upload error:', uploadError);
+          throw new Error('Failed to upload document. Please try again.');
         }
+
+        const { data: { publicUrl } } = supabase.storage
+          .from('documents')
+          .getPublicUrl(fileName);
+
+        documentUrl = publicUrl;
       }
 
-      // Update profile with business details
       const { error: profileError } = await supabase
         .from('profiles')
         .update({
@@ -87,8 +77,7 @@ const SellerVerification = () => {
         .eq('id', session.user.id);
 
       if (profileError) {
-        console.error('Profile update error:', profileError);
-        throw new Error(`Failed to update profile: ${profileError.message}`);
+        throw new Error('Failed to update profile');
       }
 
       toast({
