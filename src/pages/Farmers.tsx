@@ -18,6 +18,7 @@ const Farmers = () => {
   const { toast } = useToast();
   const [isSeller, setIsSeller] = useState(false);
   const [isSellerPanelOpen, setIsSellerPanelOpen] = useState(false);
+  const [verificationStatus, setVerificationStatus] = useState<string | null>(null);
 
   useEffect(() => {
     fetchSellers();
@@ -30,12 +31,22 @@ const Farmers = () => {
       if (session) {
         const { data, error } = await supabase
           .from('profiles')
-          .select('role')
+          .select('role, verification_status')
           .eq('id', session.user.id)
           .single();
 
         if (error) throw error;
+        
         setIsSeller(data.role === 'farmer');
+        setVerificationStatus(data.verification_status);
+        
+        // If verification is pending, show a message
+        if (data.verification_status === 'pending') {
+          toast({
+            title: "Verification Pending",
+            description: "Your seller verification is still under review.",
+          });
+        }
       }
     } catch (error) {
       console.error('Error checking seller status:', error);
@@ -47,7 +58,8 @@ const Farmers = () => {
       const { data, error } = await supabase
         .from('profiles')
         .select('id, business_name, location, bio, role, avatar_url')
-        .eq('role', 'farmer');
+        .eq('role', 'farmer')
+        .eq('verification_status', 'verified'); // Only show verified sellers
 
       if (error) throw error;
       setSellers(data || []);
@@ -83,7 +95,7 @@ const Farmers = () => {
       if (profile?.verification_status === 'pending') {
         toast({
           title: "Verification Pending",
-          description: "Your seller verification is still under review",
+          description: "Your seller verification is still under review. You'll be notified once approved.",
         });
         setIsSellerPanelOpen(false);
         return;
@@ -113,7 +125,23 @@ const Farmers = () => {
 
         <section className="py-12 px-4">
           <div className="container mx-auto max-w-6xl">
-            {isSeller && <SellerDashboard />}
+            {isSeller && verificationStatus === 'verified' && <SellerDashboard />}
+            {isSeller && verificationStatus === 'pending' && (
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 mb-8">
+                <h2 className="text-lg font-semibold text-yellow-800">Verification Pending</h2>
+                <p className="text-yellow-700">
+                  Your seller verification is currently under review. You'll be notified once your application is approved.
+                </p>
+              </div>
+            )}
+            {isSeller && verificationStatus === 'rejected' && (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-6 mb-8">
+                <h2 className="text-lg font-semibold text-red-800">Verification Rejected</h2>
+                <p className="text-red-700">
+                  Your seller verification was not approved. Please contact support for more information.
+                </p>
+              </div>
+            )}
 
             {loading ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
