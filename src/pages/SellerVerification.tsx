@@ -38,6 +38,33 @@ const SellerVerification = () => {
         return;
       }
 
+      let documentUrl = null;
+
+      // Upload verification document if provided
+      if (formData.document) {
+        const fileExt = formData.document.name.split('.').pop();
+        const fileName = `verification/${session.user.id}/document.${fileExt}`;
+
+        const { error: uploadError, data } = await supabase.storage
+          .from('documents')
+          .upload(fileName, formData.document, {
+            cacheControl: '3600',
+            upsert: true
+          });
+
+        if (uploadError) {
+          console.error('Upload error:', uploadError);
+          throw new Error('Failed to upload document');
+        }
+
+        // Get the public URL for the uploaded file
+        const { data: { publicUrl } } = supabase.storage
+          .from('documents')
+          .getPublicUrl(fileName);
+
+        documentUrl = publicUrl;
+      }
+
       // Update profile with business details
       const { error: profileError } = await supabase
         .from('profiles')
@@ -46,22 +73,14 @@ const SellerVerification = () => {
           location: formData.location,
           bio: formData.bio,
           verification_status: 'pending',
-          role: 'farmer'
+          role: 'farmer',
+          verification_document: documentUrl
         })
         .eq('id', session.user.id);
 
-      if (profileError) throw profileError;
-
-      // Upload verification document if provided
-      if (formData.document) {
-        const fileExt = formData.document.name.split('.').pop();
-        const filePath = `verification/${session.user.id}/document.${fileExt}`;
-
-        const { error: uploadError } = await supabase.storage
-          .from('documents')
-          .upload(filePath, formData.document);
-
-        if (uploadError) throw uploadError;
+      if (profileError) {
+        console.error('Profile update error:', profileError);
+        throw new Error('Failed to update profile');
       }
 
       toast({
@@ -74,7 +93,7 @@ const SellerVerification = () => {
       console.error('Error during verification:', error);
       toast({
         title: "Error",
-        description: "Failed to submit verification request",
+        description: error instanceof Error ? error.message : "Failed to submit verification request",
         variant: "destructive",
       });
     } finally {
