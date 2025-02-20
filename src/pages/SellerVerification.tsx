@@ -42,27 +42,35 @@ const SellerVerification = () => {
 
       // Upload verification document if provided
       if (formData.document) {
-        const fileExt = formData.document.name.split('.').pop();
-        const fileName = `verification/${session.user.id}/document.${fileExt}`;
+        try {
+          // Generate a unique filename to avoid conflicts
+          const fileExt = formData.document.name.split('.').pop();
+          const uniqueId = `${Date.now()}-${Math.random().toString(36).substring(2)}`;
+          const fileName = `verification/${session.user.id}/${uniqueId}.${fileExt}`;
 
-        const { error: uploadError, data } = await supabase.storage
-          .from('documents')
-          .upload(fileName, formData.document, {
-            cacheControl: '3600',
-            upsert: true
-          });
+          // First, try to upload the file
+          const { error: uploadError, data } = await supabase.storage
+            .from('documents')
+            .upload(fileName, formData.document, {
+              cacheControl: '3600',
+              upsert: false // Set to false to prevent overwriting existing files
+            });
 
-        if (uploadError) {
-          console.error('Upload error:', uploadError);
-          throw new Error('Failed to upload document');
+          if (uploadError) {
+            console.error('Upload error details:', uploadError);
+            throw new Error(`Failed to upload document: ${uploadError.message}`);
+          }
+
+          // If upload successful, get the public URL
+          const { data: { publicUrl } } = supabase.storage
+            .from('documents')
+            .getPublicUrl(fileName);
+
+          documentUrl = publicUrl;
+        } catch (uploadError) {
+          console.error('Document upload error:', uploadError);
+          throw new Error('Failed to upload verification document. Please try again.');
         }
-
-        // Get the public URL for the uploaded file
-        const { data: { publicUrl } } = supabase.storage
-          .from('documents')
-          .getPublicUrl(fileName);
-
-        documentUrl = publicUrl;
       }
 
       // Update profile with business details
@@ -80,7 +88,7 @@ const SellerVerification = () => {
 
       if (profileError) {
         console.error('Profile update error:', profileError);
-        throw new Error('Failed to update profile');
+        throw new Error(`Failed to update profile: ${profileError.message}`);
       }
 
       toast({
@@ -152,7 +160,7 @@ const SellerVerification = () => {
                     required
                   />
                   <p className="text-sm text-gray-500">
-                    Please upload a business license or any other relevant documentation
+                    Please upload a business license or any other relevant documentation (PDF, JPG, or PNG)
                   </p>
                 </div>
 
