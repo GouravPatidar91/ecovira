@@ -14,10 +14,17 @@ type Profile = {
 const Navigation = () => {
   const navigate = useNavigate();
   const [isSeller, setIsSeller] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   useEffect(() => {
+    checkAuthentication();
     checkSellerStatus();
   }, []);
+
+  const checkAuthentication = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    setIsAuthenticated(!!session);
+  };
 
   const checkSellerStatus = async () => {
     try {
@@ -39,7 +46,8 @@ const Navigation = () => {
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
-    navigate("/auth");
+    setIsAuthenticated(false);
+    navigate("/");
   };
 
   return (
@@ -70,9 +78,20 @@ const Navigation = () => {
               </Link>
             )}
             <CartSheet />
-            <Button variant="outline" onClick={handleLogout}>
-              Logout
-            </Button>
+            {isAuthenticated ? (
+              <Button variant="outline" onClick={handleLogout}>
+                Logout
+              </Button>
+            ) : (
+              <div className="flex space-x-2">
+                <Link to="/auth">
+                  <Button variant="outline">Login</Button>
+                </Link>
+                <Link to="/auth">
+                  <Button variant="default">Sign Up</Button>
+                </Link>
+              </div>
+            )}
           </div>
         </div>
       </div>
