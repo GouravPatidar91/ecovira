@@ -147,7 +147,7 @@ const Index = () => {
         <section className="py-12 px-4 bg-white">
           <div className="container mx-auto">
             <h2 className="text-2xl font-semibold text-gray-900 text-center mb-8">
-              Why Choose FarmFresh
+              Why Choose EcoVira
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
               {[
