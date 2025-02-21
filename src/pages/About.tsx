@@ -28,7 +28,7 @@ const About = () => {
           <div className="text-center space-y-6">
             <h2 className="text-3xl font-semibold text-gray-900">Our Mission</h2>
             <p className="text-lg text-gray-600">
-              FarmFresh is dedicated to revolutionizing the way local produce reaches your table. We believe in creating a sustainable ecosystem that benefits both farmers and consumers, while promoting environmental responsibility and community growth.
+              EcoVira is dedicated to revolutionizing the way local produce reaches your table. We believe in creating a sustainable ecosystem that benefits both farmers and consumers, while promoting environmental responsibility and community growth.
             </p>
           </div>
         </div>
@@ -78,7 +78,7 @@ const About = () => {
         <div className="container mx-auto max-w-4xl text-center space-y-6">
           <h2 className="text-3xl font-semibold">Join Our Growing Community</h2>
           <p className="text-lg opacity-90">
-            Whether you're a farmer looking to expand your reach or a customer seeking fresh, local produce, FarmFresh is here to connect you.
+            Whether you're a farmer looking to expand your reach or a customer seeking fresh, local produce, EcoVira is here to connect you.
           </p>
           <div className="flex justify-center gap-4">
             <Button variant="secondary" className="bg-white text-market-600 hover:bg-gray-100">
