@@ -2,11 +2,10 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ChatProvider } from "./contexts/ChatContext";
-import { Toaster } from "@/components/ui/toast"; // Used for toast notifications
+import { Toaster } from "@/components/ui/toaster"; // Changed from toast to toaster
 import { AuthProvider } from "./contexts/AuthContext";
 
 import About from "@/pages/About";
-import Contact from "@/pages/Contact";
 import Index from "@/pages/Index";
 import Auth from "@/pages/Auth";
 import Market from "@/pages/Market";

@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useReducer, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -140,17 +139,44 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({
       const userId = session.session.user.id;
 
       // Get conversations where the user is either the buyer or seller
+      // Using a custom function to fetch conversations
+      // Note: get_user_conversations is assumed to be defined in your Supabase functions
       const { data, error } = await supabase
-        .rpc('get_user_conversations', { user_id: userId })
-        .select();
+        .from('chat_conversations')
+        .select(`
+          id,
+          product_id,
+          buyer_id,
+          seller_id,
+          created_at,
+          updated_at,
+          chat_messages(message, created_at)
+        `)
+        .or(`buyer_id.eq.${userId},seller_id.eq.${userId}`)
+        .order('created_at', { ascending: false });
 
       if (error) {
         console.error("Error loading conversations:", error);
         return;
       }
 
-      // Transform the data to include the name of the other user
-      const conversations = data || [];
+      // Transform the data to include conversation details
+      const conversations: Conversation[] = data?.map((conv: any) => {
+        const isUserBuyer = conv.buyer_id === userId;
+        const otherUserId = isUserBuyer ? conv.seller_id : conv.buyer_id;
+        
+        return {
+          id: conv.id,
+          product_id: conv.product_id,
+          buyer_id: conv.buyer_id,
+          seller_id: conv.seller_id,
+          created_at: conv.created_at,
+          updated_at: conv.updated_at,
+          // Other properties can be added as needed
+          other_user_name: "User " + otherUserId.substring(0, 4), // Placeholder
+          last_message: conv.chat_messages[0]?.message || "",
+        };
+      }) || [];
 
       dispatch({ type: "SET_CONVERSATIONS", payload: conversations });
     } catch (error) {
@@ -168,7 +194,7 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({
       const { data: session } = await supabase.auth.getSession();
       if (!session.session) return;
 
-      // Using the updated function that now has the parameter named conv_id
+      // Using the function with the renamed parameter
       const { data, error } = await supabase
         .rpc('get_conversation_messages', { conv_id: conversationId })
         .select();
