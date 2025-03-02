@@ -1,8 +1,8 @@
 
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Outlet } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ChatProvider } from "./contexts/ChatContext";
-import { Toaster } from "@/components/ui/toaster"; // Changed from toast to toaster
+import { Toaster } from "./components/ui/toaster"; // Using relative path instead of alias
 import { AuthProvider } from "./contexts/AuthContext";
 
 import About from "@/pages/About";
@@ -45,7 +45,8 @@ function App() {
 
                 <Route path="/seller-verification" element={<SellerVerification />} />
 
-                <Route path="/dashboard" element={<DashboardLayout />}>
+                {/* Fix: Use nested routes pattern with Outlet to properly provide children */}
+                <Route path="/dashboard" element={<DashboardLayout><Outlet /></DashboardLayout>}>
                   <Route path="products" element={<Products />} />
                   <Route path="products/new" element={<ProductForm />} />
                   <Route path="products/edit/:id" element={<ProductForm />} />
