@@ -112,7 +112,7 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({
           schema: "public",
           table: "chat_messages",
         },
-        (payload) => {
+        (payload: any) => {
           // Only add the message if it's for the current conversation
           if (
             payload.new &&
