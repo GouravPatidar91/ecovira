@@ -19,6 +19,7 @@ interface Conversation {
   buyer_id: string;
   seller_id: string;
   created_at: string;
+  updated_at?: string;
   last_message?: string;
   unread_count?: number;
   other_user_name?: string;
@@ -140,40 +141,16 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({
 
       // Get conversations where the user is either the buyer or seller
       const { data, error } = await supabase
-        .from("chat_conversations")
-        .select(
-          `
-          id,
-          product_id,
-          buyer_id,
-          seller_id,
-          created_at,
-          products:product_id (name),
-          buyer:buyer_id (full_name),
-          seller:seller_id (business_name, full_name)
-        `
-        )
-        .or(`buyer_id.eq.${userId},seller_id.eq.${userId}`);
+        .rpc('get_user_conversations', { user_id: userId })
+        .select();
 
-      if (error) throw error;
+      if (error) {
+        console.error("Error loading conversations:", error);
+        return;
+      }
 
       // Transform the data to include the name of the other user
-      const conversations = data.map((conv: any) => {
-        const isBuyer = conv.buyer_id === userId;
-        let otherUserName = isBuyer
-          ? conv.seller.business_name || conv.seller.full_name
-          : conv.buyer.full_name;
-
-        return {
-          id: conv.id,
-          product_id: conv.product_id,
-          buyer_id: conv.buyer_id,
-          seller_id: conv.seller_id,
-          created_at: conv.created_at,
-          other_user_name: otherUserName,
-          product_name: conv.products?.name,
-        };
-      });
+      const conversations = data || [];
 
       dispatch({ type: "SET_CONVERSATIONS", payload: conversations });
     } catch (error) {
@@ -192,40 +169,25 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({
       if (!session.session) return;
 
       const { data, error } = await supabase
-        .from("chat_messages")
-        .select(
-          `
-          id,
-          conversation_id,
-          sender_id,
-          message,
-          created_at,
-          is_read,
-          sender:sender_id (full_name, business_name)
-        `
-        )
-        .eq("conversation_id", conversationId)
-        .order("created_at", { ascending: true });
+        .rpc('get_conversation_messages', { conversation_id: conversationId })
+        .select();
 
-      if (error) throw error;
+      if (error) {
+        console.error("Error loading messages:", error);
+        return;
+      }
 
-      // Transform the messages to include sender name
-      const messages = data.map((msg: any) => ({
-        ...msg,
-        sender_name: msg.sender.business_name || msg.sender.full_name,
-      }));
-
-      dispatch({ type: "SET_MESSAGES", payload: messages });
+      dispatch({ type: "SET_MESSAGES", payload: data || [] });
 
       // Mark unread messages as read if user is the recipient
       const userId = session.session.user.id;
-      const unreadMessages = messages.filter(
-        (msg) => !msg.is_read && msg.sender_id !== userId
-      );
+      const unreadMessages = data?.filter(
+        (msg: ChatMessage) => !msg.is_read && msg.sender_id !== userId
+      ) || [];
 
       if (unreadMessages.length > 0) {
         await Promise.all(
-          unreadMessages.map(async (msg) => {
+          unreadMessages.map(async (msg: ChatMessage) => {
             await supabase
               .from("chat_messages")
               .update({ is_read: true })
@@ -252,16 +214,21 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({
       const buyerId = session.session.user.id;
 
       // Check if a conversation already exists between these users for this product
-      let { data: existingConv } = await supabase
+      let query = supabase
         .from("chat_conversations")
         .select("id")
         .eq("buyer_id", buyerId)
         .eq("seller_id", sellerId);
 
       if (productId) {
-        existingConv = existingConv?.filter(
-          (conv) => conv.product_id === productId
-        );
+        query = query.eq("product_id", productId);
+      }
+
+      const { data: existingConv, error: queryError } = await query;
+
+      if (queryError) {
+        console.error("Error checking existing conversations:", queryError);
+        throw queryError;
       }
 
       if (existingConv && existingConv.length > 0) {
