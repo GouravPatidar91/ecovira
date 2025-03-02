@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
@@ -79,16 +78,11 @@ export function CartSheet() {
 
       if (itemsError) throw itemsError;
 
-      // Clear the cart
-      await clearCart();
-
-      toast({
-        title: "Success",
-        description: "Your order has been placed successfully",
-      });
-
       setIsCheckoutDialogOpen(false);
-      navigate('/market');
+      
+      // Redirect to payment page
+      navigate(`/payment?orderId=${orderData.id}&amount=${totalAmount}`);
+      
     } catch (error) {
       console.error('Error during checkout:', error);
       toast({
@@ -217,9 +211,7 @@ export function CartSheet() {
           </AlertDialogHeader>
           
           <div className="space-y-4 py-4">
-            <div className="space
-
--y-2">
+            <div className="space-y-2">
               <Label htmlFor="shipping">Shipping Address</Label>
               <Input
                 id="shipping"
