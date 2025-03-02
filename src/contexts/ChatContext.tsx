@@ -168,8 +168,9 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({
       const { data: session } = await supabase.auth.getSession();
       if (!session.session) return;
 
+      // Using the updated function that now has the parameter named conv_id
       const { data, error } = await supabase
-        .rpc('get_conversation_messages', { conversation_id: conversationId })
+        .rpc('get_conversation_messages', { conv_id: conversationId })
         .select();
 
       if (error) {

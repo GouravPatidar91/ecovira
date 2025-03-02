@@ -48,7 +48,7 @@ const Chat = () => {
     if (conversationId) {
       loadMessages(conversationId);
     }
-  }, [conversationId, navigate, toast]);
+  }, [conversationId, navigate, toast, loadMessages]);
 
   // Scroll to bottom when messages change
   useEffect(() => {

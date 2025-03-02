@@ -361,7 +361,20 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_conversation_messages: {
+        Args: {
+          conv_id: string
+        }
+        Returns: {
+          id: string
+          conversation_id: string
+          sender_id: string
+          message: string
+          is_read: boolean
+          created_at: string
+          sender_name: string
+        }[]
+      }
     }
     Enums: {
       user_role: "admin" | "farmer" | "buyer"

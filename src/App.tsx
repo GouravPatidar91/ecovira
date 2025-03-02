@@ -5,7 +5,6 @@ import { ChatProvider } from "./contexts/ChatContext";
 import { Toaster } from "@/components/ui/toast"; // Used for toast notifications
 import { AuthProvider } from "./contexts/AuthContext";
 
-import NavBar from "@/components/Navigation";
 import About from "@/pages/About";
 import Contact from "@/pages/Contact";
 import Index from "@/pages/Index";
@@ -34,7 +33,6 @@ function App() {
       <AuthProvider>
         <ChatProvider>
           <BrowserRouter>
-            <NavBar />
             <div className="min-h-screen">
               <Routes>
                 <Route path="/" element={<Index />} />
@@ -44,7 +42,7 @@ function App() {
                 <Route path="/farmers" element={<Farmers />} />
                 <Route path="/payment" element={<Payment />} />
                 <Route path="/chats" element={<ChatList />} />
-                <Route path="/chat/:id" element={<Chat />} />
+                <Route path="/chat" element={<Chat />} />
 
                 <Route path="/seller-verification" element={<SellerVerification />} />
 
