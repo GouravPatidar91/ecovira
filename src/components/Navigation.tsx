@@ -1,102 +1,202 @@
-
-import { Link } from "react-router-dom";
-import { Button } from "@/components/ui/button";
+import { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
+import { useCart } from "@/contexts/CartContext";
 import { CartSheet } from "@/components/CartSheet";
+import {
+  Home,
+  Menu,
+  Search,
+  User,
+  LogOut,
+  ShoppingBag,
+  MessageCircle,
+} from "lucide-react";
+import {
+  Sheet,
+  SheetClose,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { supabase } from "@/integrations/supabase/client";
-import { useNavigate } from "react-router-dom";
-import { useState, useEffect } from "react";
+import { useToast } from "@/hooks/use-toast";
 
-type Profile = {
-  role: 'farmer' | 'buyer' | 'admin';
-  is_seller: boolean;
-};
-
-const Navigation = () => {
+const NavBar = () => {
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const { user, signOut } = useAuth();
   const navigate = useNavigate();
-  const [isSeller, setIsSeller] = useState(false);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const { clearCart } = useCart();
+  const { toast } = useToast();
 
-  useEffect(() => {
-    checkAuthentication();
-    checkSellerStatus();
-  }, []);
-
-  const checkAuthentication = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    setIsAuthenticated(!!session);
+  const toggleMenu = () => {
+    setIsMenuOpen(!isMenuOpen);
   };
 
-  const checkSellerStatus = async () => {
+  const handleSignOut = async () => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
-        const { data, error } = await supabase
-          .from('profiles')
-          .select('role')
-          .eq('id', session.user.id)
-          .single();
-        
-        if (error) throw error;
-        setIsSeller(data.role === 'farmer');
-      }
+      await signOut();
+      clearCart();
+      navigate("/auth");
     } catch (error) {
-      console.error('Error checking seller status:', error);
+      toast({
+        title: "Error signing out",
+        description: "Please try again.",
+        variant: "destructive",
+      });
     }
   };
 
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    setIsAuthenticated(false);
-    navigate("/");
-  };
+  const navigationItems = [
+    {
+      name: "Home",
+      href: "/",
+      icon: <Home className="h-4 w-4" />,
+      requireAuth: false,
+    },
+    {
+      name: "Market",
+      href: "/market",
+      icon: <ShoppingBag className="h-4 w-4" />,
+      requireAuth: false,
+    },
+    {
+      name: "Farmers",
+      href: "/farmers",
+      icon: <User className="h-4 w-4" />,
+      requireAuth: false,
+    },
+    {
+      name: "Dashboard",
+      href: "/dashboard/products",
+      icon: <User className="h-4 w-4" />,
+      requireAuth: true,
+    },
+    {
+      name: "Messages",
+      href: "/chats",
+      icon: <MessageCircle className="h-4 w-4" />,
+      requireAuth: true,
+    },
+  ];
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-white border-b border-gray-200">
-      <div className="container mx-auto px-4">
-        <div className="flex items-center justify-between h-16">
-          <div className="flex items-center space-x-8">
-            <Link to="/" className="text-xl font-bold text-market-600">
-              FarmFresh
-            </Link>
-            <div className="hidden md:flex space-x-4">
-              <Link to="/market">
-                <Button variant="ghost">Market</Button>
-              </Link>
-              <Link to="/farmers">
-                <Button variant="ghost">Farmers</Button>
-              </Link>
-              <Link to="/about">
-                <Button variant="ghost">About</Button>
+    <div className="bg-white border-b shadow-sm sticky top-0 z-50">
+      <div className="container mx-auto px-4 h-16 flex items-center justify-between">
+        <Link to="/" className="font-bold text-xl text-gray-800">
+          AgriChain
+        </Link>
+
+        <div className="hidden md:flex items-center space-x-4">
+          {navigationItems.map(
+            (item, index) =>
+              (!item.requireAuth || user) && (
+                <Link
+                  key={index}
+                  to={item.href}
+                  className="text-gray-600 hover:text-gray-900 transition-colors duration-200 flex items-center space-x-2"
+                >
+                  {item.icon}
+                  <span>{item.name}</span>
+                </Link>
+              )
+          )}
+        </div>
+
+        <div className="flex items-center space-x-4">
+          <div className="hidden md:block">
+            <CartSheet />
+          </div>
+
+          {user ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="relative w-8 h-8 rounded-full">
+                  <Avatar className="w-8 h-8">
+                    <AvatarImage src={user?.avatar_url} />
+                    <AvatarFallback>{user?.full_name?.charAt(0)}</AvatarFallback>
+                  </Avatar>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="w-56" align="end" forceMount>
+                <DropdownMenuLabel className="font-normal">
+                  <div className="flex flex-col space-y-1">
+                    <p className="text-sm font-medium leading-none">{user?.full_name}</p>
+                    <p className="text-xs leading-none text-muted-foreground">
+                      {user?.email}
+                    </p>
+                  </div>
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => navigate("/dashboard/products")}>Dashboard</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate("/chats")}>Messages</DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleSignOut}>
+                  <LogOut className="mr-2 h-4 w-4" />
+                  Sign Out
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : (
+            <div className="hidden md:block">
+              <Link
+                to="/auth"
+                className="text-gray-600 hover:text-gray-900 transition-colors duration-200"
+              >
+                Sign In
               </Link>
             </div>
-          </div>
-          
-          <div className="flex items-center space-x-4">
-            {isSeller && (
-              <Link to="/dashboard/products">
-                <Button variant="outline">Seller Dashboard</Button>
-              </Link>
-            )}
-            <CartSheet />
-            {isAuthenticated ? (
-              <Button variant="outline" onClick={handleLogout}>
-                Logout
+          )}
+
+          <Sheet>
+            <SheetTrigger asChild>
+              <Button variant="outline" size="icon" className="md:hidden">
+                <Menu className="h-4 w-4" />
               </Button>
-            ) : (
-              <div className="flex space-x-2">
-                <Link to="/auth">
-                  <Button variant="outline">Login</Button>
-                </Link>
-                <Link to="/auth">
-                  <Button variant="default">Sign Up</Button>
-                </Link>
+            </SheetTrigger>
+            <SheetContent side="left" className="w-full sm:w-64">
+              <SheetHeader>
+                <SheetTitle>Menu</SheetTitle>
+                <SheetDescription>
+                  Explore our site and manage your account.
+                </SheetDescription>
+              </SheetHeader>
+              <div className="py-4">
+                {navigationItems.map(
+                  (item, index) =>
+                    (!item.requireAuth || user) && (
+                      <Link
+                        key={index}
+                        to={item.href}
+                        className="block py-2 text-gray-600 hover:text-gray-900 transition-colors duration-200"
+                      >
+                        {item.name}
+                      </Link>
+                    )
+                )}
+                {!user ? (
+                  <Link
+                    to="/auth"
+                    className="block py-2 text-gray-600 hover:text-gray-900 transition-colors duration-200"
+                  >
+                    Sign In
+                  </Link>
+                ) : (
+                  <Button variant="ghost" className="w-full justify-start" onClick={handleSignOut}>
+                    Sign Out
+                  </Button>
+                )}
               </div>
-            )}
-          </div>
+            </SheetContent>
+          </Sheet>
         </div>
       </div>
-    </nav>
+    </div>
   );
 };
 
-export default Navigation;
+export default NavBar;
