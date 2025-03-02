@@ -1,6 +1,5 @@
 
 import { ReactNode, useEffect, useState } from "react";
-import Navigation from "./Navigation";
 import { Button } from "./ui/button";
 import { useNavigate } from "react-router-dom";
 import { Package, List, ShoppingBag, FileCheck } from "lucide-react";
@@ -39,8 +38,7 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
   return (
     <CartProvider>
       <div className="min-h-screen bg-gray-50">
-        <Navigation />
-        <div className="container mx-auto px-4 py-16">
+        <div className="container mx-auto px-4 py-8">
           <div className="grid grid-cols-12 gap-6">
             {/* Sidebar */}
             <div className="col-span-12 md:col-span-3 space-y-2">
@@ -72,7 +70,7 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
                 <Button 
                   variant="ghost" 
                   className="w-full justify-start"
-                  onClick={() => navigate("/dashboard/verifications")}
+                  onClick={() => navigate("/dashboard/admin-verification")}
                 >
                   <FileCheck className="mr-2 h-4 w-4" />
                   Verifications
