@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Send, Loader2 } from "lucide-react";
+import { ArrowLeft, Send, Loader2, AlertCircle } from "lucide-react";
 import { format } from "date-fns";
 import { CartProvider } from "@/contexts/CartContext";
 
@@ -18,6 +18,8 @@ const Chat = () => {
   const { state, sendMessage, loadMessages } = useChat();
   const [newMessage, setNewMessage] = useState("");
   const [userId, setUserId] = useState<string | null>(null);
+  const [isLocalLoading, setIsLocalLoading] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
   // Get the conversation ID from the URL query params
@@ -46,7 +48,10 @@ const Chat = () => {
     checkAuth();
 
     if (conversationId) {
-      loadMessages(conversationId);
+      loadMessages(conversationId).catch(error => {
+        console.error("Error in Chat component when loading messages:", error);
+        setLoadError("Failed to load messages. Please try again later.");
+      });
     }
   }, [conversationId, navigate, toast, loadMessages]);
 
@@ -57,10 +62,22 @@ const Chat = () => {
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newMessage.trim()) return;
+    if (!newMessage.trim() || isLocalLoading) return;
     
-    await sendMessage(newMessage);
-    setNewMessage("");
+    try {
+      setIsLocalLoading(true);
+      await sendMessage(newMessage);
+      setNewMessage("");
+    } catch (error) {
+      console.error("Error sending message:", error);
+      toast({
+        title: "Failed to send message",
+        description: "Please try again",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLocalLoading(false);
+    }
   };
 
   const conversation = state.conversations.find(conv => conv.id === conversationId);
@@ -99,6 +116,23 @@ const Chat = () => {
               {state.isLoading ? (
                 <div className="flex justify-center items-center h-full">
                   <Loader2 className="h-6 w-6 animate-spin text-market-500" />
+                </div>
+              ) : loadError ? (
+                <div className="flex flex-col justify-center items-center h-full text-red-500">
+                  <AlertCircle className="h-8 w-8 mb-2" />
+                  <p>{loadError}</p>
+                  <Button 
+                    variant="outline" 
+                    className="mt-4"
+                    onClick={() => {
+                      setLoadError(null);
+                      if (conversationId) {
+                        loadMessages(conversationId);
+                      }
+                    }}
+                  >
+                    Retry
+                  </Button>
                 </div>
               ) : state.messages.length === 0 ? (
                 <div className="text-center text-gray-500 my-8">
@@ -143,9 +177,14 @@ const Chat = () => {
                   onChange={(e) => setNewMessage(e.target.value)}
                   className="flex-1"
                   autoComplete="off"
+                  disabled={state.isLoading || isLocalLoading}
                 />
-                <Button type="submit" disabled={!newMessage.trim() || state.isLoading}>
-                  <Send className="h-4 w-4" />
+                <Button type="submit" disabled={!newMessage.trim() || state.isLoading || isLocalLoading}>
+                  {isLocalLoading ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Send className="h-4 w-4" />
+                  )}
                 </Button>
               </div>
             </form>

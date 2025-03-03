@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useReducer, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -30,6 +31,7 @@ interface ChatState {
   currentConversation: string | null;
   messages: ChatMessage[];
   isLoading: boolean;
+  error: string | null;
 }
 
 type ChatAction =
@@ -38,6 +40,7 @@ type ChatAction =
   | { type: "SET_MESSAGES"; payload: ChatMessage[] }
   | { type: "ADD_MESSAGE"; payload: ChatMessage }
   | { type: "SET_LOADING"; payload: boolean }
+  | { type: "SET_ERROR"; payload: string | null }
   | { type: "MARK_AS_READ"; payload: string };
 
 interface ChatContextProps {
@@ -56,6 +59,7 @@ const initialState: ChatState = {
   currentConversation: null,
   messages: [],
   isLoading: false,
+  error: null,
 };
 
 const chatReducer = (state: ChatState, action: ChatAction): ChatState => {
@@ -73,6 +77,8 @@ const chatReducer = (state: ChatState, action: ChatAction): ChatState => {
       };
     case "SET_LOADING":
       return { ...state, isLoading: action.payload };
+    case "SET_ERROR":
+      return { ...state, error: action.payload };
     case "MARK_AS_READ":
       return {
         ...state,
@@ -93,9 +99,14 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({
   // Load conversations when the user logs in
   useEffect(() => {
     const checkAuth = async () => {
-      const { data } = await supabase.auth.getSession();
-      if (data.session) {
-        loadConversations();
+      try {
+        const { data } = await supabase.auth.getSession();
+        if (data.session) {
+          loadConversations();
+        }
+      } catch (error) {
+        console.error("Auth check error:", error);
+        dispatch({ type: "SET_ERROR", payload: "Authentication error" });
       }
     };
 
@@ -122,7 +133,9 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({
           }
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log("Subscription status:", status);
+      });
 
     return () => {
       supabase.removeChannel(channel);
@@ -132,15 +145,17 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({
   const loadConversations = async () => {
     try {
       dispatch({ type: "SET_LOADING", payload: true });
+      dispatch({ type: "SET_ERROR", payload: null });
 
       const { data: session } = await supabase.auth.getSession();
-      if (!session.session) return;
+      if (!session.session) {
+        dispatch({ type: "SET_ERROR", payload: "No active session" });
+        return;
+      }
 
       const userId = session.session.user.id;
 
       // Get conversations where the user is either the buyer or seller
-      // Using a custom function to fetch conversations
-      // Note: get_user_conversations is assumed to be defined in your Supabase functions
       const { data, error } = await supabase
         .from('chat_conversations')
         .select(`
@@ -150,13 +165,15 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({
           seller_id,
           created_at,
           updated_at,
+          products(name),
           chat_messages(message, created_at)
         `)
         .or(`buyer_id.eq.${userId},seller_id.eq.${userId}`)
-        .order('created_at', { ascending: false });
+        .order('updated_at', { ascending: false });
 
       if (error) {
         console.error("Error loading conversations:", error);
+        dispatch({ type: "SET_ERROR", payload: error.message });
         return;
       }
 
@@ -172,15 +189,18 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({
           seller_id: conv.seller_id,
           created_at: conv.created_at,
           updated_at: conv.updated_at,
-          // Other properties can be added as needed
+          product_name: conv.products?.name || "Unknown Product",
           other_user_name: "User " + otherUserId.substring(0, 4), // Placeholder
-          last_message: conv.chat_messages[0]?.message || "",
+          last_message: conv.chat_messages && conv.chat_messages.length > 0 
+            ? conv.chat_messages[0].message 
+            : "",
         };
       }) || [];
 
       dispatch({ type: "SET_CONVERSATIONS", payload: conversations });
     } catch (error) {
       console.error("Error loading conversations:", error);
+      dispatch({ type: "SET_ERROR", payload: "Failed to load conversations" });
     } finally {
       dispatch({ type: "SET_LOADING", payload: false });
     }
@@ -189,28 +209,46 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({
   const loadMessages = async (conversationId: string) => {
     try {
       dispatch({ type: "SET_LOADING", payload: true });
+      dispatch({ type: "SET_ERROR", payload: null });
       dispatch({ type: "SET_CURRENT_CONVERSATION", payload: conversationId });
 
       const { data: session } = await supabase.auth.getSession();
-      if (!session.session) return;
-
-      // Using the function with the renamed parameter
-      const { data, error } = await supabase
-        .rpc('get_conversation_messages', { conv_id: conversationId })
-        .select();
-
-      if (error) {
-        console.error("Error loading messages:", error);
+      if (!session.session) {
+        dispatch({ type: "SET_ERROR", payload: "No active session" });
         return;
       }
 
-      dispatch({ type: "SET_MESSAGES", payload: data || [] });
+      // Fetch messages directly from the chat_messages table
+      const { data, error } = await supabase
+        .from('chat_messages')
+        .select('*, profiles!sender_id(full_name, business_name)')
+        .eq('conversation_id', conversationId)
+        .order('created_at', { ascending: true });
+
+      if (error) {
+        console.error("Error loading messages:", error);
+        dispatch({ type: "SET_ERROR", payload: error.message });
+        return;
+      }
+
+      // Transform the data to include sender name
+      const messages: ChatMessage[] = data?.map((msg: any) => ({
+        id: msg.id,
+        conversation_id: msg.conversation_id,
+        sender_id: msg.sender_id,
+        message: msg.message,
+        created_at: msg.created_at,
+        is_read: msg.is_read,
+        sender_name: msg.profiles?.business_name || msg.profiles?.full_name || 'Unknown',
+      })) || [];
+
+      dispatch({ type: "SET_MESSAGES", payload: messages });
 
       // Mark unread messages as read if user is the recipient
       const userId = session.session.user.id;
-      const unreadMessages = data?.filter(
+      const unreadMessages = messages.filter(
         (msg: ChatMessage) => !msg.is_read && msg.sender_id !== userId
-      ) || [];
+      );
 
       if (unreadMessages.length > 0) {
         await Promise.all(
@@ -225,6 +263,7 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({
       }
     } catch (error) {
       console.error("Error loading messages:", error);
+      dispatch({ type: "SET_ERROR", payload: "Failed to load messages" });
     } finally {
       dispatch({ type: "SET_LOADING", payload: false });
     }
@@ -235,6 +274,9 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({
     productId?: string
   ): Promise<string> => {
     try {
+      dispatch({ type: "SET_LOADING", payload: true });
+      dispatch({ type: "SET_ERROR", payload: null });
+
       const { data: session } = await supabase.auth.getSession();
       if (!session.session) throw new Error("Not authenticated");
 
@@ -255,6 +297,7 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({
 
       if (queryError) {
         console.error("Error checking existing conversations:", queryError);
+        dispatch({ type: "SET_ERROR", payload: queryError.message });
         throw queryError;
       }
 
@@ -280,7 +323,10 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        dispatch({ type: "SET_ERROR", payload: error.message });
+        throw error;
+      }
 
       const newConversation = {
         id: data.id,
@@ -300,6 +346,8 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({
     } catch (error) {
       console.error("Error starting conversation:", error);
       throw error;
+    } finally {
+      dispatch({ type: "SET_LOADING", payload: false });
     }
   };
 
@@ -325,11 +373,27 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error("Error sending message:", error);
+        throw error;
+      }
 
-      // No need to add the message here, it will be added via the subscription
+      // Add the message to the state immediately for better UX
+      // It will also be added via the subscription
+      dispatch({ 
+        type: "ADD_MESSAGE", 
+        payload: {
+          id: data.id,
+          conversation_id: data.conversation_id,
+          sender_id: data.sender_id,
+          message: data.message,
+          created_at: data.created_at,
+          is_read: data.is_read
+        } 
+      });
     } catch (error) {
       console.error("Error sending message:", error);
+      throw error;
     }
   };
 
