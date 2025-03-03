@@ -1,8 +1,7 @@
-
 import { useEffect, useState, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import Navigation from "@/components/Navigation";
-import { useChat } from "@/contexts/ChatContext";
+import { useChat } from "@/contexts/chat";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
@@ -22,10 +21,8 @@ const Chat = () => {
   const [loadError, setLoadError] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
-  // Get the conversation ID from the URL query params
   const conversationId = new URLSearchParams(location.search).get("conversation");
   
-  // Scroll to bottom of messages
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
@@ -55,7 +52,6 @@ const Chat = () => {
     }
   }, [conversationId, navigate, toast, loadMessages]);
 
-  // Scroll to bottom when messages change
   useEffect(() => {
     scrollToBottom();
   }, [state.messages]);
@@ -89,7 +85,6 @@ const Chat = () => {
         
         <div className="container mx-auto pt-24 pb-16 px-4">
           <div className="max-w-3xl mx-auto bg-white rounded-lg shadow-md overflow-hidden">
-            {/* Chat header */}
             <div className="bg-market-500 text-white p-4 flex items-center">
               <Button 
                 variant="ghost" 
@@ -111,7 +106,6 @@ const Chat = () => {
               </div>
             </div>
             
-            {/* Messages */}
             <div className="h-[calc(100vh-320px)] overflow-y-auto p-4 bg-gray-50">
               {state.isLoading ? (
                 <div className="flex justify-center items-center h-full">
@@ -168,7 +162,6 @@ const Chat = () => {
               <div ref={messagesEndRef} />
             </div>
             
-            {/* Message input */}
             <form onSubmit={handleSendMessage} className="p-4 border-t">
               <div className="flex gap-2">
                 <Input

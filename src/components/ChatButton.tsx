@@ -1,7 +1,6 @@
-
 import { MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useChat } from "@/contexts/ChatContext";
+import { useChat } from "@/contexts/chat";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
