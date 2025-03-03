@@ -28,7 +28,25 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({
 
     checkAuth();
 
-    // Subscribe to new messages
+    // Subscribe to auth state changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        if (event === 'SIGNED_IN' && session) {
+          loadConversations();
+        }
+      }
+    );
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, []);
+
+  // Set up real-time subscription for new messages
+  useEffect(() => {
+    if (!state.currentConversation) return;
+
+    // Subscribe to new messages for the current conversation
     const channel = supabase
       .channel("chat_updates")
       .on(
@@ -37,20 +55,29 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({
           event: "INSERT",
           schema: "public",
           table: "chat_messages",
+          filter: `conversation_id=eq.${state.currentConversation}`,
         },
-        (payload: any) => {
-          // Only add the message if it's for the current conversation
-          if (
-            payload.new &&
-            payload.new.conversation_id === state.currentConversation
-          ) {
-            const newMessage = payload.new as ChatMessage;
+        async (payload: any) => {
+          // Only add messages from other users (not our own, which we add manually)
+          const { data: session } = await supabase.auth.getSession();
+          if (session?.session && payload.new.sender_id !== session.session.user.id) {
+            const newMessage = {
+              ...payload.new,
+              sender_name: 'User ' + payload.new.sender_id.substring(0, 4)
+            } as ChatMessage;
+            
             dispatch({ type: "ADD_MESSAGE", payload: newMessage });
+            
+            // Mark the message as read
+            await supabase
+              .from("chat_messages")
+              .update({ is_read: true })
+              .eq("id", newMessage.id);
           }
         }
       )
       .subscribe((status) => {
-        console.log("Subscription status:", status);
+        console.info("Subscription status:", status);
       });
 
     return () => {
@@ -108,6 +135,7 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({
     } catch (error) {
       console.error("Error loading messages:", error);
       dispatch({ type: "SET_ERROR", payload: "Failed to load messages" });
+      throw error; // Propagate the error for better handling in UI
     } finally {
       dispatch({ type: "SET_LOADING", payload: false });
     }

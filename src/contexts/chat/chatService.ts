@@ -37,7 +37,7 @@ export const chatService = {
         created_at: conv.created_at,
         updated_at: conv.updated_at,
         product_name: conv.products?.name || "Unknown Product",
-        other_user_name: "User " + otherUserId.substring(0, 4), // Placeholder
+        other_user_name: "User " + otherUserId.substring(0, 4), // Simple user name
         last_message: conv.chat_messages && conv.chat_messages.length > 0 
           ? conv.chat_messages[0].message 
           : "",
@@ -48,9 +48,10 @@ export const chatService = {
   },
 
   async loadMessages(conversationId: string, userId: string): Promise<ChatMessage[]> {
+    // Use a simpler query that doesn't rely on the profile relationship
     const { data, error } = await supabase
       .from('chat_messages')
-      .select('*, profiles!sender_id(full_name, business_name)')
+      .select('*')
       .eq('conversation_id', conversationId)
       .order('created_at', { ascending: true });
 
@@ -59,7 +60,7 @@ export const chatService = {
       throw error;
     }
 
-    // Transform the data to include sender name
+    // Transform messages with default sender name
     const messages: ChatMessage[] = data?.map((msg: any) => ({
       id: msg.id,
       conversation_id: msg.conversation_id,
@@ -67,7 +68,7 @@ export const chatService = {
       message: msg.message,
       created_at: msg.created_at,
       is_read: msg.is_read,
-      sender_name: msg.profiles?.business_name || msg.profiles?.full_name || 'Unknown',
+      sender_name: msg.sender_id === userId ? 'You' : 'User ' + msg.sender_id.substring(0, 4),
     })) || [];
 
     return messages;
@@ -155,7 +156,8 @@ export const chatService = {
       sender_id: data.sender_id,
       message: data.message,
       created_at: data.created_at,
-      is_read: data.is_read
+      is_read: data.is_read,
+      sender_name: 'You' // Set to 'You' since this is the sender
     };
   }
 };

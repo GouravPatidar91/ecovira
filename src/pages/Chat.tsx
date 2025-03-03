@@ -1,3 +1,4 @@
+
 import { useEffect, useState, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import Navigation from "@/components/Navigation";
@@ -6,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Send, Loader2, AlertCircle } from "lucide-react";
+import { ArrowLeft, Send, Loader2, AlertCircle, RefreshCw } from "lucide-react";
 import { format } from "date-fns";
 import { CartProvider } from "@/contexts/CartContext";
 
@@ -45,12 +46,20 @@ const Chat = () => {
     checkAuth();
 
     if (conversationId) {
-      loadMessages(conversationId).catch(error => {
-        console.error("Error in Chat component when loading messages:", error);
-        setLoadError("Failed to load messages. Please try again later.");
-      });
+      loadConversationMessages();
     }
-  }, [conversationId, navigate, toast, loadMessages]);
+  }, [conversationId]);
+
+  const loadConversationMessages = () => {
+    if (!conversationId) return;
+    
+    setLoadError(null);
+    
+    loadMessages(conversationId).catch(error => {
+      console.error("Error in Chat component when loading messages:", error);
+      setLoadError("Failed to load messages. Please try again later.");
+    });
+  };
 
   useEffect(() => {
     scrollToBottom();
@@ -118,13 +127,9 @@ const Chat = () => {
                   <Button 
                     variant="outline" 
                     className="mt-4"
-                    onClick={() => {
-                      setLoadError(null);
-                      if (conversationId) {
-                        loadMessages(conversationId);
-                      }
-                    }}
+                    onClick={loadConversationMessages}
                   >
+                    <RefreshCw className="h-4 w-4 mr-2" />
                     Retry
                   </Button>
                 </div>
@@ -170,9 +175,12 @@ const Chat = () => {
                   onChange={(e) => setNewMessage(e.target.value)}
                   className="flex-1"
                   autoComplete="off"
-                  disabled={state.isLoading || isLocalLoading}
+                  disabled={state.isLoading || isLocalLoading || !!loadError}
                 />
-                <Button type="submit" disabled={!newMessage.trim() || state.isLoading || isLocalLoading}>
+                <Button 
+                  type="submit" 
+                  disabled={!newMessage.trim() || state.isLoading || isLocalLoading || !!loadError}
+                >
                   {isLocalLoading ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
                   ) : (
