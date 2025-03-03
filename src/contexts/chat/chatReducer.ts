@@ -33,6 +33,15 @@ export const chatReducer = (state: ChatState, action: ChatAction): ChatState => 
           msg.id === action.payload ? { ...msg, is_read: true } : msg
         ),
       };
+    case "UPDATE_MESSAGE":
+      return {
+        ...state,
+        messages: state.messages.map((msg) =>
+          msg.id === action.payload.id 
+            ? { ...msg, ...action.payload } 
+            : msg
+        ),
+      };
     default:
       return state;
   }

@@ -38,7 +38,8 @@ export type ChatAction =
   | { type: "ADD_MESSAGE"; payload: ChatMessage }
   | { type: "SET_LOADING"; payload: boolean }
   | { type: "SET_ERROR"; payload: string | null }
-  | { type: "MARK_AS_READ"; payload: string };
+  | { type: "MARK_AS_READ"; payload: string }
+  | { type: "UPDATE_MESSAGE"; payload: { id: string, [key: string]: any } };
 
 export interface ChatContextProps {
   state: ChatState;

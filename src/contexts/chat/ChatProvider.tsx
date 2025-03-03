@@ -76,6 +76,25 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({
           }
         }
       )
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "chat_messages",
+          filter: `conversation_id=eq.${state.currentConversation}`,
+        },
+        (payload: any) => {
+          // Update message read status
+          dispatch({ 
+            type: "UPDATE_MESSAGE", 
+            payload: { 
+              id: payload.new.id, 
+              is_read: payload.new.is_read 
+            } 
+          });
+        }
+      )
       .subscribe((status) => {
         console.info("Subscription status:", status);
       });

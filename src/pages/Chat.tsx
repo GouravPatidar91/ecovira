@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Send, Loader2, AlertCircle, RefreshCw } from "lucide-react";
+import { ArrowLeft, Send, Loader2, AlertCircle, RefreshCw, Check } from "lucide-react";
 import { format } from "date-fns";
 import { CartProvider } from "@/contexts/CartContext";
 
@@ -156,9 +156,23 @@ const Chat = () => {
                         }`}
                       >
                         <p className="text-sm">{message.message}</p>
-                        <p className="text-xs opacity-70 mt-1">
-                          {format(new Date(message.created_at), "h:mm a")}
-                        </p>
+                        <div className="flex justify-between items-center mt-1">
+                          <p className="text-xs opacity-70">
+                            {format(new Date(message.created_at), "h:mm a")}
+                          </p>
+                          {isCurrentUser && (
+                            <span className="flex items-center text-xs">
+                              {message.is_read ? (
+                                <span className="flex items-center">
+                                  <Check className="h-3 w-3 mr-1" />
+                                  <span>Seen</span>
+                                </span>
+                              ) : (
+                                <span className="opacity-70">Sent</span>
+                              )}
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
                   );
