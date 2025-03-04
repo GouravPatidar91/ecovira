@@ -4,6 +4,7 @@ import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card"
 import { Leaf } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
 import ChatButton from "@/components/ChatButton";
+import ProductRating from "@/components/ProductRating";
 
 interface ProductCardProps {
   id: string;
@@ -61,6 +62,7 @@ const ProductCard = ({
         <div className="text-sm text-gray-600 space-y-2">
           <p className="font-medium text-gray-900">{farmer}</p>
           <p>{location}</p>
+          <ProductRating productId={id} size="sm" />
           <p className="text-xs text-gray-500">{description}</p>
         </div>
       </CardContent>

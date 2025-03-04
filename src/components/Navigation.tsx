@@ -97,7 +97,7 @@ const NavBar = () => {
     <div className="bg-white border-b shadow-sm sticky top-0 z-50">
       <div className="container mx-auto px-4 h-16 flex items-center justify-between">
         <Link to="/" className="font-bold text-xl text-gray-800">
-          AgriChain
+          EcoVira
         </Link>
 
         <div className="hidden md:flex items-center space-x-4">

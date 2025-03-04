@@ -13,7 +13,7 @@ const About = () => {
         <div className="container mx-auto max-w-6xl">
           <div className="text-center space-y-6">
             <h1 className="text-4xl md:text-5xl font-bold text-gray-900">
-              About FarmFresh
+              About EcoVira
             </h1>
             <p className="text-lg text-gray-600 max-w-2xl mx-auto">
               Connecting local farmers with customers, promoting sustainable agriculture, and building stronger communities

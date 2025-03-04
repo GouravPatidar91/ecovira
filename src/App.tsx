@@ -22,6 +22,7 @@ import Inventory from "@/pages/dashboard/Inventory";
 import AdminRoute from "@/components/AdminRoute";
 import ChatList from "@/pages/ChatList";
 import Chat from "@/pages/Chat";
+import ProductDetail from "@/pages/ProductDetail";
 
 // Create a client
 const queryClient = new QueryClient();
@@ -38,6 +39,7 @@ function App() {
                 <Route path="/about" element={<About />} />
                 <Route path="/auth" element={<Auth />} />
                 <Route path="/market" element={<Market />} />
+                <Route path="/product/:id" element={<ProductDetail />} />
                 <Route path="/farmers" element={<Farmers />} />
                 <Route path="/payment" element={<Payment />} />
                 <Route path="/chats" element={<ChatList />} />
