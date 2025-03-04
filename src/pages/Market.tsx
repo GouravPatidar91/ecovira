@@ -1,4 +1,3 @@
-
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Navigation from "@/components/Navigation";
@@ -8,7 +7,7 @@ import ProductCard from "@/components/ProductCard";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { CartProvider } from "@/contexts/CartContext";
+import { CartProvider } from "@/contexts/cart";
 
 interface Product {
   id: string;

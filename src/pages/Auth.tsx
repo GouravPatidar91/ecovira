@@ -1,7 +1,6 @@
-
 import Navigation from "@/components/Navigation";
 import AuthForm from "@/components/AuthForm";
-import { CartProvider } from "@/contexts/CartContext";
+import { CartProvider } from "@/contexts/cart";
 
 const Auth = () => {
   return (

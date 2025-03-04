@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import Navigation from "@/components/Navigation";
@@ -6,7 +5,7 @@ import PaymentForm from "@/components/PaymentForm";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2 } from "lucide-react";
-import { CartProvider } from "@/contexts/CartContext";
+import { CartProvider } from "@/contexts/cart";
 
 const Payment = () => {
   const navigate = useNavigate();
@@ -17,7 +16,6 @@ const Payment = () => {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Get order information from URL params
     const urlParams = new URLSearchParams(location.search);
     const id = urlParams.get("orderId");
     const total = urlParams.get("amount");
@@ -39,7 +37,6 @@ const Payment = () => {
 
   const handlePaymentComplete = async (paymentId: string) => {
     try {
-      // Update order with payment details
       const { error } = await supabase
         .from('orders')
         .update({ 
@@ -55,7 +52,6 @@ const Payment = () => {
         description: "Your order has been placed successfully",
       });
       
-      // Navigate to order confirmation page
       setTimeout(() => {
         navigate("/dashboard/orders");
       }, 1000);

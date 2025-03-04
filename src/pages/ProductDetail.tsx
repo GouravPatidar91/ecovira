@@ -6,7 +6,7 @@ import { useToast } from "@/hooks/use-toast";
 import Navigation from "@/components/Navigation";
 import { Leaf, ShoppingBag } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useCart } from "@/contexts/CartContext";
+import { useCart } from "@/contexts/cart";
 import ProductReviews from "@/components/ProductReviews";
 import ProductRating from "@/components/ProductRating";
 import ChatButton from "@/components/ChatButton";
