@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
@@ -15,6 +16,7 @@ export function CartSheet() {
   const [isCheckoutDialogOpen, setIsCheckoutDialogOpen] = useState(false);
   const [shippingAddress, setShippingAddress] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -31,6 +33,11 @@ export function CartSheet() {
 
   const handleCheckout = async () => {
     if (!shippingAddress.trim()) {
+      toast({
+        title: "Missing Information",
+        description: "Please provide a shipping address",
+        variant: "destructive",
+      });
       return;
     }
 
@@ -79,6 +86,10 @@ export function CartSheet() {
       if (itemsError) throw itemsError;
 
       setIsCheckoutDialogOpen(false);
+      setIsOpen(false);
+      
+      // Clear cart after successful order
+      await clearCart();
       
       // Redirect to payment page
       navigate(`/payment?orderId=${orderData.id}&amount=${totalAmount}`);
@@ -96,12 +107,12 @@ export function CartSheet() {
   };
 
   return (
-    <Sheet>
+    <Sheet open={isOpen} onOpenChange={setIsOpen}>
       <SheetTrigger asChild>
         <Button variant="outline" size="icon" className="relative">
           <ShoppingCart className="h-4 w-4" />
           {items.length > 0 && (
-            <span className="absolute -top-2 -right-2 bg-market-600 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+            <span className="absolute -top-2 -right-2 bg-primary text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
               {items.length}
             </span>
           )}
