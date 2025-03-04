@@ -75,10 +75,14 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
 
   useEffect(() => {
     const loadCart = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
-
       try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+          // If no session, clear the cart state
+          dispatch({ type: 'SET_CART', payload: [] });
+          return;
+        }
+
         dispatch({ type: 'SET_LOADING', payload: true });
         const { data: cartItems, error } = await supabase
           .from('cart_items')
@@ -122,25 +126,41 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
 
     loadCart();
 
-    const channel = supabase
-      .channel('cart_changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'cart_items'
-        },
-        () => {
-          loadCart();
-        }
-      )
-      .subscribe();
+    // Set up subscription to listen for changes to cart items
+    const setupSubscription = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
 
-    return () => {
-      supabase.removeChannel(channel);
+      const channel = supabase
+        .channel('cart_changes')
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'cart_items',
+            filter: `user_id=eq.${session.user.id}`
+          },
+          () => {
+            loadCart();
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
     };
-  }, []);
+
+    const unsubscribe = setupSubscription();
+    return () => {
+      if (unsubscribe) {
+        unsubscribe.then(unsub => {
+          if (unsub) unsub();
+        });
+      }
+    };
+  }, [toast]);
 
   const addToCart = async (product: Product, quantity: number) => {
     // Validate product object
@@ -175,18 +195,31 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
         .eq('product_id', product.id)
         .maybeSingle();
 
-      if (queryError) throw queryError;
+      if (queryError) {
+        console.error('Error checking existing cart item:', queryError);
+        throw queryError;
+      }
+
+      let resultItem;
 
       if (existingItem) {
         // Update quantity if item exists
         const newQuantity = existingItem.quantity + quantity;
-        const { error: updateError } = await supabase
+        const { data: updatedItem, error: updateError } = await supabase
           .from('cart_items')
           .update({ quantity: newQuantity })
-          .eq('id', existingItem.id);
+          .eq('id', existingItem.id)
+          .select('id, quantity')
+          .single();
 
-        if (updateError) throw updateError;
+        if (updateError) {
+          console.error('Error updating cart quantity:', updateError);
+          throw updateError;
+        }
 
+        resultItem = updatedItem;
+        
+        // Update cart state
         dispatch({
           type: 'UPDATE_QUANTITY',
           payload: { id: existingItem.id, quantity: newQuantity }
@@ -203,7 +236,12 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
           .select('id')
           .single();
 
-        if (insertError) throw insertError;
+        if (insertError) {
+          console.error('Error inserting cart item:', insertError);
+          throw insertError;
+        }
+
+        resultItem = insertedItem;
 
         const cartItem: CartItem = {
           id: insertedItem.id,
@@ -222,11 +260,13 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
         title: "Added to cart",
         description: `${product.name} has been added to your cart`,
       });
+      
+      console.log('Successfully added/updated item in cart:', resultItem);
     } catch (error) {
       console.error('Error adding to cart:', error);
       toast({
         title: "Error",
-        description: "Failed to add item to cart",
+        description: "Failed to add item to cart. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -242,9 +282,21 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
 
     try {
       dispatch({ type: 'SET_LOADING', payload: true });
+      
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast({
+          title: "Authentication required",
+          description: "Please log in to manage your cart",
+          variant: "destructive",
+        });
+        return;
+      }
+
       const { error } = await supabase
         .from('cart_items')
         .delete()
+        .eq('user_id', session.user.id)
         .eq('product_id', productId);
 
       if (error) throw error;
@@ -274,10 +326,22 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
 
     try {
       dispatch({ type: 'SET_LOADING', payload: true });
+      
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast({
+          title: "Authentication required",
+          description: "Please log in to manage your cart",
+          variant: "destructive",
+        });
+        return;
+      }
+
       const { error } = await supabase
         .from('cart_items')
         .update({ quantity })
-        .eq('id', itemId);
+        .eq('id', itemId)
+        .eq('user_id', session.user.id);
 
       if (error) throw error;
 
@@ -295,10 +359,17 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const clearCart = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) return;
-
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast({
+          title: "Authentication required",
+          description: "Please log in to manage your cart",
+          variant: "destructive",
+        });
+        return;
+      }
+
       dispatch({ type: 'SET_LOADING', payload: true });
       const { error } = await supabase
         .from('cart_items')
@@ -308,6 +379,10 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
       if (error) throw error;
 
       dispatch({ type: 'CLEAR_CART' });
+      toast({
+        title: "Cart cleared",
+        description: "All items have been removed from your cart",
+      });
     } catch (error) {
       console.error('Error clearing cart:', error);
       toast({

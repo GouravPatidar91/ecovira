@@ -35,6 +35,17 @@ const ProductCard = ({
 }: ProductCardProps) => {
   const { addToCart } = useCart();
 
+  const handleAddToCart = () => {
+    console.log("Adding to cart:", { id, name, price, unit, image });
+    addToCart({
+      id,
+      name,
+      price,
+      unit,
+      images: [image],
+    }, 1);
+  };
+
   return (
     <Card className="overflow-hidden hover:shadow-lg transition-shadow duration-300">
       <div className="relative aspect-square">
@@ -68,13 +79,7 @@ const ProductCard = ({
       </CardContent>
       <CardFooter className="p-4 pt-0 flex flex-col gap-2">
         <Button
-          onClick={() => addToCart({
-            id,
-            name,
-            price,
-            unit,
-            images: [image],
-          }, 1)}
+          onClick={handleAddToCart}
           disabled={quantity_available === 0}
           className="w-full"
         >
