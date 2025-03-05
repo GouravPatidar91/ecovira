@@ -1,3 +1,4 @@
+
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Navigation from "@/components/Navigation";
@@ -7,7 +8,7 @@ import ProductCard from "@/components/ProductCard";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { CartProvider } from "@/contexts/cart";
+import { ErrorBoundary } from "react-error-boundary";
 
 interface Product {
   id: string;
@@ -68,6 +69,7 @@ const Market = () => {
       if (error) throw error;
       setProducts(data || []);
     } catch (error) {
+      console.error("Error fetching products:", error);
       toast({
         title: "Error",
         description: "Failed to load products",
@@ -78,8 +80,19 @@ const Market = () => {
     }
   };
 
+  // Fallback UI for errors
+  const ErrorFallback = () => (
+    <div className="p-8 text-center">
+      <h2 className="text-xl font-semibold text-red-600 mb-2">Something went wrong</h2>
+      <p className="mb-4">We're having trouble loading the marketplace.</p>
+      <Button onClick={() => window.location.reload()}>
+        Try Again
+      </Button>
+    </div>
+  );
+
   return (
-    <CartProvider>
+    <ErrorBoundary FallbackComponent={ErrorFallback}>
       <div className="min-h-screen bg-gray-50">
         <Navigation />
         
@@ -126,7 +139,7 @@ const Market = () => {
                   </div>
                 ))}
               </div>
-            ) : (
+            ) : products.length > 0 ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                 {products.map((product) => (
                   <ProductCard
@@ -145,11 +158,15 @@ const Market = () => {
                   />
                 ))}
               </div>
+            ) : (
+              <div className="text-center py-10">
+                <p className="text-gray-500">No products available at the moment.</p>
+              </div>
             )}
           </div>
         </section>
       </div>
-    </CartProvider>
+    </ErrorBoundary>
   );
 };
 

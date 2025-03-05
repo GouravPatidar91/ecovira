@@ -5,6 +5,7 @@ import { Leaf } from "lucide-react";
 import { useCart } from "@/contexts/cart";
 import ChatButton from "@/components/ChatButton";
 import ProductRating from "@/components/ProductRating";
+import { useState } from "react";
 
 interface ProductCardProps {
   id: string;
@@ -34,6 +35,7 @@ const ProductCard = ({
   seller_id,
 }: ProductCardProps) => {
   const { addToCart } = useCart();
+  const [chatError, setChatError] = useState(false);
 
   const handleAddToCart = () => {
     console.log("Adding to cart:", { id, name, price, unit, image });
@@ -85,14 +87,37 @@ const ProductCard = ({
         >
           {quantity_available === 0 ? "Out of Stock" : "Add to Cart"}
         </Button>
-        <ChatButton 
-          sellerId={seller_id} 
-          productId={id} 
-          className="w-full"
-        />
+        
+        {/* Wrap ChatButton in error boundary */}
+        {!chatError ? (
+          <div className="w-full">
+            <ErrorBoundary onError={() => setChatError(true)}>
+              <ChatButton 
+                sellerId={seller_id} 
+                productId={id} 
+                className="w-full"
+              />
+            </ErrorBoundary>
+          </div>
+        ) : (
+          <Button variant="outline" className="w-full" disabled>
+            Chat Unavailable
+          </Button>
+        )}
       </CardFooter>
     </Card>
   );
+};
+
+// Simple Error Boundary Component
+const ErrorBoundary = ({ children, onError }: { children: React.ReactNode, onError: () => void }) => {
+  try {
+    return <>{children}</>;
+  } catch (error) {
+    onError();
+    console.error("Error in ChatButton:", error);
+    return null;
+  }
 };
 
 export default ProductCard;
