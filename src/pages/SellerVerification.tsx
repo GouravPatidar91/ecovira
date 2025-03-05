@@ -1,180 +1,138 @@
 
-import Navigation from "@/components/Navigation";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { useNavigate } from "react-router-dom";
-import { useState } from "react";
-import { CartProvider } from "@/contexts/CartContext";
+import Navigation from "@/components/Navigation";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 
 const SellerVerification = () => {
+  const { user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [loading, setLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     businessName: "",
     location: "",
-    bio: "",
-    document: null as File | null,
+    bio: ""
   });
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      console.log('Selected file:', file.name, 'Size:', file.size, 'Type:', file.type);
-      setFormData(prev => ({ ...prev, document: file }));
-    }
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
+    
+    if (!user) {
+      toast({
+        title: "Authentication required",
+        description: "Please sign in to continue",
+        variant: "destructive"
+      });
+      navigate("/auth");
+      return;
+    }
 
+    setIsSubmitting(true);
+    
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        toast({
-          title: "Authentication Required",
-          description: "Please sign in to continue.",
-          variant: "destructive",
-        });
-        navigate('/auth');
-        return;
-      }
-
-      let documentUrl = null;
-
-      if (formData.document) {
-        console.log('Starting document upload...');
-        const fileExt = formData.document.name.split('.').pop();
-        const fileName = `${session.user.id}-${Date.now()}.${fileExt}`;
-
-        console.log('Uploading file:', fileName);
-        const { error: uploadError, data: uploadData } = await supabase.storage
-          .from('documents')
-          .upload(fileName, formData.document, {
-            cacheControl: '3600',
-            upsert: true
-          });
-
-        if (uploadError) {
-          console.error('Upload error details:', uploadError);
-          throw new Error(`Failed to upload document: ${uploadError.message}`);
-        }
-
-        console.log('Upload successful:', uploadData);
-
-        const { data: { publicUrl } } = supabase.storage
-          .from('documents')
-          .getPublicUrl(fileName);
-
-        console.log('Generated public URL:', publicUrl);
-        documentUrl = publicUrl;
-      }
-
-      console.log('Updating profile with document URL:', documentUrl);
-      const { error: profileError } = await supabase
+      const { error } = await supabase
         .from('profiles')
         .update({
           business_name: formData.businessName,
           location: formData.location,
           bio: formData.bio,
-          verification_status: 'pending',
           role: 'farmer',
-          verification_document: documentUrl
+          verification_status: 'pending'
         })
-        .eq('id', session.user.id);
-
-      if (profileError) {
-        console.error('Profile update error:', profileError);
-        throw new Error(`Failed to update profile: ${profileError.message}`);
-      }
-
+        .eq('id', user.id);
+      
+      if (error) throw error;
+      
       toast({
-        title: "Verification Submitted",
-        description: "Your seller verification request has been submitted for review.",
+        title: "Verification submitted",
+        description: "Your seller verification request has been submitted and is pending review."
       });
-
-      navigate('/farmers');
+      
+      navigate("/farmers");
     } catch (error) {
-      console.error('Error during verification:', error);
+      console.error("Error submitting verification:", error);
       toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to submit verification request",
-        variant: "destructive",
+        title: "Submission failed",
+        description: "There was an error submitting your verification. Please try again.",
+        variant: "destructive"
       });
     } finally {
-      setLoading(false);
+      setIsSubmitting(false);
     }
   };
 
   return (
-    <CartProvider>
-      <div className="min-h-screen bg-gray-50">
-        <Navigation />
-        
-        <div className="pt-24 pb-12">
-          <div className="container mx-auto max-w-2xl px-4">
-            <div className="bg-white rounded-lg shadow-sm p-6">
-              <h1 className="text-2xl font-semibold mb-6">Seller Verification</h1>
+    <div className="min-h-screen bg-gray-50">
+      <Navigation />
+      <div className="container mx-auto p-4 mt-8 max-w-2xl">
+        <Card>
+          <CardHeader>
+            <CardTitle>Seller Verification</CardTitle>
+            <CardDescription>
+              Provide your business information to become a verified seller
+            </CardDescription>
+          </CardHeader>
+          <form onSubmit={handleSubmit}>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="businessName">Business Name</Label>
+                <Input
+                  id="businessName"
+                  name="businessName"
+                  placeholder="Your farm or business name"
+                  value={formData.businessName}
+                  onChange={handleChange}
+                  required
+                />
+              </div>
               
-              <form onSubmit={handleSubmit} className="space-y-6">
-                <div className="space-y-2">
-                  <Label htmlFor="businessName">Business Name</Label>
-                  <Input
-                    id="businessName"
-                    value={formData.businessName}
-                    onChange={(e) => setFormData(prev => ({ ...prev, businessName: e.target.value }))}
-                    required
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="location">Location</Label>
-                  <Input
-                    id="location"
-                    value={formData.location}
-                    onChange={(e) => setFormData(prev => ({ ...prev, location: e.target.value }))}
-                    required
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="bio">Business Description</Label>
-                  <Textarea
-                    id="bio"
-                    value={formData.bio}
-                    onChange={(e) => setFormData(prev => ({ ...prev, bio: e.target.value }))}
-                    required
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="document">Verification Document</Label>
-                  <Input
-                    id="document"
-                    type="file"
-                    onChange={handleFileChange}
-                    accept=".pdf,.jpg,.jpeg,.png"
-                    required
-                  />
-                  <p className="text-sm text-gray-500">
-                    Please upload a business license or any other relevant documentation (PDF, JPG, or PNG)
-                  </p>
-                </div>
-
-                <Button type="submit" disabled={loading} className="w-full">
-                  {loading ? "Submitting..." : "Submit for Verification"}
-                </Button>
-              </form>
-            </div>
-          </div>
-        </div>
+              <div className="space-y-2">
+                <Label htmlFor="location">Location</Label>
+                <Input
+                  id="location"
+                  name="location"
+                  placeholder="Your business location"
+                  value={formData.location}
+                  onChange={handleChange}
+                  required
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="bio">About Your Business</Label>
+                <Textarea
+                  id="bio"
+                  name="bio"
+                  placeholder="Tell us about your farm and products"
+                  value={formData.bio}
+                  onChange={handleChange}
+                  rows={4}
+                  required
+                />
+              </div>
+            </CardContent>
+            <CardFooter>
+              <Button type="submit" disabled={isSubmitting} className="w-full">
+                {isSubmitting ? "Submitting..." : "Submit for Verification"}
+              </Button>
+            </CardFooter>
+          </form>
+        </Card>
       </div>
-    </CartProvider>
+    </div>
   );
 };
 

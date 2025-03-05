@@ -4,7 +4,6 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { CartProvider } from "@/contexts/CartContext";
 import { Seller } from "./Farmers/types";
 import FarmerHero from "./Farmers/components/FarmerHero";
 import SellerCard from "./Farmers/components/SellerCard";
@@ -114,64 +113,62 @@ const Farmers = () => {
   };
 
   return (
-    <CartProvider>
-      <div className="min-h-screen bg-gray-50">
-        <Navigation />
-        
-        <FarmerHero 
-          isSeller={isSeller} 
-          onJoinAsFarmer={handleJoinAsFarmer} 
-        />
+    <div className="min-h-screen bg-gray-50">
+      <Navigation />
+      
+      <FarmerHero 
+        isSeller={isSeller} 
+        onJoinAsFarmer={handleJoinAsFarmer} 
+      />
 
-        <section className="py-12 px-4">
-          <div className="container mx-auto max-w-6xl">
-            {isSeller && verificationStatus === 'verified' && <SellerDashboard />}
-            {isSeller && verificationStatus === 'pending' && (
-              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 mb-8">
-                <h2 className="text-lg font-semibold text-yellow-800">Verification Pending</h2>
-                <p className="text-yellow-700">
-                  Your seller verification is currently under review. You'll be notified once your application is approved.
-                </p>
-              </div>
-            )}
-            {isSeller && verificationStatus === 'rejected' && (
-              <div className="bg-red-50 border border-red-200 rounded-lg p-6 mb-8">
-                <h2 className="text-lg font-semibold text-red-800">Verification Rejected</h2>
-                <p className="text-red-700">
-                  Your seller verification was not approved. Please contact support for more information.
-                </p>
-              </div>
-            )}
+      <section className="py-12 px-4">
+        <div className="container mx-auto max-w-6xl">
+          {isSeller && verificationStatus === 'verified' && <SellerDashboard />}
+          {isSeller && verificationStatus === 'pending' && (
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 mb-8">
+              <h2 className="text-lg font-semibold text-yellow-800">Verification Pending</h2>
+              <p className="text-yellow-700">
+                Your seller verification is currently under review. You'll be notified once your application is approved.
+              </p>
+            </div>
+          )}
+          {isSeller && verificationStatus === 'rejected' && (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-6 mb-8">
+              <h2 className="text-lg font-semibold text-red-800">Verification Rejected</h2>
+              <p className="text-red-700">
+                Your seller verification was not approved. Please contact support for more information.
+              </p>
+            </div>
+          )}
 
-            {loading ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {[...Array(6)].map((_, index) => (
-                  <div key={index} className="animate-pulse">
-                    <div className="bg-white p-6 rounded-lg shadow-sm">
-                      <div className="w-16 h-16 bg-gray-200 rounded-full mb-4" />
-                      <div className="h-4 bg-gray-200 rounded w-3/4 mb-2" />
-                      <div className="h-4 bg-gray-200 rounded w-1/2" />
-                    </div>
+          {loading ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {[...Array(6)].map((_, index) => (
+                <div key={index} className="animate-pulse">
+                  <div className="bg-white p-6 rounded-lg shadow-sm">
+                    <div className="w-16 h-16 bg-gray-200 rounded-full mb-4" />
+                    <div className="h-4 bg-gray-200 rounded w-3/4 mb-2" />
+                    <div className="h-4 bg-gray-200 rounded w-1/2" />
                   </div>
-                ))}
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {sellers.map((seller) => (
-                  <SellerCard key={seller.id} seller={seller} />
-                ))}
-              </div>
-            )}
-          </div>
-        </section>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {sellers.map((seller) => (
+                <SellerCard key={seller.id} seller={seller} />
+              ))}
+            </div>
+          )}
+        </div>
+      </section>
 
-        <SellerRegistrationSheet 
-          isOpen={isSellerPanelOpen}
-          onOpenChange={setIsSellerPanelOpen}
-          onContinue={handleContinueToRegistration}
-        />
-      </div>
-    </CartProvider>
+      <SellerRegistrationSheet 
+        isOpen={isSellerPanelOpen}
+        onOpenChange={setIsSellerPanelOpen}
+        onContinue={handleContinueToRegistration}
+      />
+    </div>
   );
 };
 
