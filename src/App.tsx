@@ -9,22 +9,25 @@ import ProductDetail from "@/pages/ProductDetail";
 import Payment from "@/pages/Payment";
 import { Toaster } from "@/components/ui/toaster";
 import { CartProvider } from "@/contexts/cart";
+import { AuthProvider } from "@/contexts/AuthContext";
 
 function App() {
   return (
     <BrowserRouter>
-      <CartProvider>
-        <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/market" element={<Market />} />
-          <Route path="/auth" element={<Auth />} />
-          <Route path="/farmers" element={<Farmers />} />
-          <Route path="/about" element={<About />} />
-          <Route path="/product/:id" element={<ProductDetail />} />
-          <Route path="/payment" element={<Payment />} />
-        </Routes>
-        <Toaster />
-      </CartProvider>
+      <AuthProvider>
+        <CartProvider>
+          <Routes>
+            <Route path="/" element={<Index />} />
+            <Route path="/market" element={<Market />} />
+            <Route path="/auth" element={<Auth />} />
+            <Route path="/farmers" element={<Farmers />} />
+            <Route path="/about" element={<About />} />
+            <Route path="/product/:id" element={<ProductDetail />} />
+            <Route path="/payment" element={<Payment />} />
+          </Routes>
+          <Toaster />
+        </CartProvider>
+      </AuthProvider>
     </BrowserRouter>
   );
 }

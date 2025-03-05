@@ -1,18 +1,35 @@
 
 import { useContext } from 'react';
-import { CartContext, CartProvider } from './CartProvider';
-import type { CartItem, CartState, Product } from './types';
+import { CartContext } from './CartProvider';
+import { CartProvider } from './CartProvider';
+import { CartState, CartAction, Product } from './types';
 
-export { CartProvider };
+export interface UseCartReturn {
+  items: CartState['items'];
+  loading: boolean;
+  addToCart: (product: Product, quantity: number) => Promise<void>;
+  removeFromCart: (productId: string) => Promise<void>;
+  updateQuantity: (itemId: string, quantity: number) => Promise<void>;
+  clearCart: () => Promise<void>;
+}
 
-// Create the hook for using the cart context
-export const useCart = () => {
+export const useCart = (): UseCartReturn => {
   const context = useContext(CartContext);
+  
   if (!context) {
     throw new Error('useCart must be used within a CartProvider');
   }
-  return context;
+  
+  const { state, addToCart, removeFromCart, updateQuantity, clearCart } = context;
+  
+  return {
+    items: state.items,
+    loading: state.loading,
+    addToCart,
+    removeFromCart,
+    updateQuantity,
+    clearCart
+  };
 };
 
-// Export types
-export type { CartItem, CartState, Product };
+export { CartProvider };
