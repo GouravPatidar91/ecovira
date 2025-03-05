@@ -1,8 +1,8 @@
+
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
-import ProfileButton from "@/components/ProfileButton";
 import { CartSheet } from "@/components/CartSheet";
 import { useCart } from "@/contexts/cart";
 
@@ -41,7 +41,9 @@ const Index = () => {
           <div className="flex items-center space-x-4">
             <CartSheet />
             {isLoggedIn ? (
-              <ProfileButton />
+              <Link to="/auth">
+                <Button variant="outline">My Account</Button>
+              </Link>
             ) : (
               <Link to="/auth">
                 <Button>Sign In</Button>
