@@ -5,7 +5,6 @@ import PaymentForm from "@/components/PaymentForm";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2 } from "lucide-react";
-import { CartProvider } from "@/contexts/cart";
 
 const Payment = () => {
   const navigate = useNavigate();
@@ -71,33 +70,29 @@ const Payment = () => {
 
   if (isLoading) {
     return (
-      <CartProvider>
-        <div className="min-h-screen bg-gray-50">
-          <Navigation />
-          <div className="flex items-center justify-center h-[80vh]">
-            <Loader2 className="h-8 w-8 animate-spin text-market-600" />
-          </div>
+      <div className="min-h-screen bg-gray-50">
+        <Navigation />
+        <div className="flex items-center justify-center h-[80vh]">
+          <Loader2 className="h-8 w-8 animate-spin text-market-600" />
         </div>
-      </CartProvider>
+      </div>
     );
   }
 
   return (
-    <CartProvider>
-      <div className="min-h-screen bg-gray-50">
-        <Navigation />
-        <div className="container mx-auto px-4 py-16">
-          <div className="max-w-2xl mx-auto">
-            <h1 className="text-3xl font-bold text-center mb-8">Complete Your Payment</h1>
-            <PaymentForm 
-              amount={amount} 
-              onPaymentComplete={handlePaymentComplete}
-              onCancel={handleCancel}
-            />
-          </div>
+    <div className="min-h-screen bg-gray-50">
+      <Navigation />
+      <div className="container mx-auto px-4 py-16">
+        <div className="max-w-2xl mx-auto">
+          <h1 className="text-3xl font-bold text-center mb-8">Complete Your Payment</h1>
+          <PaymentForm 
+            amount={amount} 
+            onPaymentComplete={handlePaymentComplete}
+            onCancel={handleCancel}
+          />
         </div>
       </div>
-    </CartProvider>
+    </div>
   );
 };
 
