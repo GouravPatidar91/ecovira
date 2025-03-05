@@ -4,6 +4,7 @@ import { cartReducer } from './cartReducer';
 import { CartState, CartAction, Product } from './types';
 import { useCartData } from './useCartData';
 import { cartService } from './cartService';
+import { supabase } from '@/integrations/supabase/client';
 
 // Define the context type
 interface CartContextType {
@@ -29,7 +30,10 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
   const addToCart = async (product: Product, quantity: number) => {
     try {
       dispatch({ type: 'SET_LOADING', payload: true });
-      await cartService.addToCart(product, quantity);
+      const { data } = await supabase.auth.getSession();
+      if (data.session) {
+        await cartService.addToCart(data.session.user.id, product, quantity);
+      }
     } catch (error) {
       console.error('Error adding to cart:', error);
     } finally {
@@ -40,7 +44,10 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
   const removeFromCart = async (productId: string) => {
     try {
       dispatch({ type: 'SET_LOADING', payload: true });
-      await cartService.removeFromCart(productId);
+      const { data } = await supabase.auth.getSession();
+      if (data.session) {
+        await cartService.removeFromCart(data.session.user.id, productId);
+      }
     } catch (error) {
       console.error('Error removing from cart:', error);
     } finally {
@@ -51,7 +58,10 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
   const updateQuantity = async (itemId: string, quantity: number) => {
     try {
       dispatch({ type: 'SET_LOADING', payload: true });
-      await cartService.updateQuantity(itemId, quantity);
+      const { data } = await supabase.auth.getSession();
+      if (data.session) {
+        await cartService.updateQuantity(data.session.user.id, itemId, quantity);
+      }
     } catch (error) {
       console.error('Error updating quantity:', error);
     } finally {
@@ -62,7 +72,10 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
   const clearCart = async () => {
     try {
       dispatch({ type: 'SET_LOADING', payload: true });
-      await cartService.clearCart();
+      const { data } = await supabase.auth.getSession();
+      if (data.session) {
+        await cartService.clearCart(data.session.user.id);
+      }
     } catch (error) {
       console.error('Error clearing cart:', error);
     } finally {

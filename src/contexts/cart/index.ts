@@ -20,15 +20,13 @@ export const useCart = (): UseCartReturn => {
     throw new Error('useCart must be used within a CartProvider');
   }
   
-  const { state, addToCart, removeFromCart, updateQuantity, clearCart } = context;
-  
   return {
-    items: state.items,
-    loading: state.loading,
-    addToCart,
-    removeFromCart,
-    updateQuantity,
-    clearCart
+    items: context.state.items,
+    loading: context.state.loading,
+    addToCart: context.addToCart,
+    removeFromCart: context.removeFromCart,
+    updateQuantity: context.updateQuantity,
+    clearCart: context.clearCart
   };
 };
 

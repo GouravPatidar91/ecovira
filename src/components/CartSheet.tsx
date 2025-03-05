@@ -12,7 +12,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
 export function CartSheet() {
-  const { state: { items, loading }, updateQuantity, removeFromCart, clearCart } = useCart();
+  const { items, loading, updateQuantity, removeFromCart, clearCart } = useCart();
   const [isCheckoutDialogOpen, setIsCheckoutDialogOpen] = useState(false);
   const [shippingAddress, setShippingAddress] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
