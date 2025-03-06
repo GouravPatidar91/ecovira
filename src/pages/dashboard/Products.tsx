@@ -1,191 +1,180 @@
 
-import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import DashboardLayout from "@/components/DashboardLayout";
-import { Button } from "@/components/ui/button";
-import { Plus, Pencil, Trash, Loader2 } from "lucide-react";
+import React, { useEffect, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { Plus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/components/ui/use-toast";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
+import { useAuth } from "@/contexts/AuthContext";
+import { useToast } from "@/hooks/use-toast";
+import { Button } from "@/components/ui/button";
 
 interface Product {
   id: string;
   name: string;
   price: number;
-  unit: string;
   quantity_available: number;
-  status: string;
+  image_url: string | null;
+  created_at: string;
 }
 
 const Products = () => {
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const { toast } = useToast();
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const { toast } = useToast();
-  const navigate = useNavigate();
+  const [isSellerVerified, setIsSellerVerified] = useState(false);
 
   useEffect(() => {
-    fetchProducts();
-  }, []);
-
-  const fetchProducts = async () => {
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        navigate('/auth');
+    const checkUserAndLoadProducts = async () => {
+      if (!user) {
+        navigate("/auth");
         return;
       }
 
-      const { data, error } = await supabase
-        .from('products')
-        .select('*')
-        .order('created_at', { ascending: false });
+      try {
+        // First check if the user is a verified seller
+        const { data: profileData, error: profileError } = await supabase
+          .from('profiles')
+          .select('role, verification_status')
+          .eq('id', user.id)
+          .maybeSingle();
 
-      if (error) throw error;
-      setProducts(data);
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to load products",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
+        if (profileError) {
+          console.error("Error checking seller status:", profileError);
+          toast({
+            title: "Error",
+            description: "Could not verify your seller status",
+            variant: "destructive",
+          });
+          navigate("/");
+          return;
+        }
 
-  const handleDeleteProduct = async (productId: string) => {
-    try {
-      const { error } = await supabase
-        .from('products')
-        .delete()
-        .eq('id', productId);
+        if (profileData?.role !== 'farmer' || profileData?.verification_status !== 'verified') {
+          console.log("User is not a verified seller:", profileData);
+          toast({
+            title: "Access Denied",
+            description: "You need to be a verified seller to manage products.",
+            variant: "destructive",
+          });
+          navigate("/farmers");
+          return;
+        }
 
-      if (error) throw error;
+        setIsSellerVerified(true);
 
-      setProducts(products.filter(product => product.id !== productId));
-      toast({
-        title: "Success",
-        description: "Product deleted successfully",
-      });
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to delete product",
-        variant: "destructive",
-      });
-    }
-  };
+        // Load the seller's products
+        const { data, error } = await supabase
+          .from('products')
+          .select('*')
+          .eq('seller_id', user.id)
+          .order('created_at', { ascending: false });
+
+        if (error) {
+          console.error("Error fetching products:", error);
+          toast({
+            title: "Error",
+            description: "Failed to load your products",
+            variant: "destructive",
+          });
+          return;
+        }
+
+        setProducts(data || []);
+      } catch (error) {
+        console.error("Error in product management:", error);
+        toast({
+          title: "Error",
+          description: "An unexpected error occurred",
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    checkUserAndLoadProducts();
+  }, [user, navigate, toast]);
 
   if (isLoading) {
     return (
-      <DashboardLayout>
-        <div className="flex items-center justify-center h-64">
-          <Loader2 className="h-8 w-8 animate-spin" />
-        </div>
-      </DashboardLayout>
+      <div className="p-6">
+        <h1 className="text-2xl font-bold mb-6">Products Management</h1>
+        <p>Loading your products...</p>
+      </div>
     );
   }
 
+  if (!isSellerVerified) {
+    return null; // The useEffect will have redirected already
+  }
+
   return (
-    <DashboardLayout>
-      <div className="space-y-6">
-        <div className="flex justify-between items-center">
-          <h1 className="text-2xl font-semibold">Products</h1>
-          <Button 
+    <div className="p-6">
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-bold">Products Management</h1>
+        <Button
+          onClick={() => navigate("/dashboard/products/new")}
+          className="bg-market-600 hover:bg-market-700"
+        >
+          <Plus className="mr-2 h-4 w-4" />
+          Add Product
+        </Button>
+      </div>
+
+      {products.length === 0 ? (
+        <div className="text-center py-12 bg-white rounded-lg shadow-sm border">
+          <h2 className="text-xl font-semibold mb-3">No Products Yet</h2>
+          <p className="text-gray-500 mb-6">
+            You haven't added any products to your store yet.
+          </p>
+          <Button
             onClick={() => navigate("/dashboard/products/new")}
-            className="bg-market-500 hover:bg-market-600"
+            className="bg-market-600 hover:bg-market-700"
           >
             <Plus className="mr-2 h-4 w-4" />
-            Add Product
+            Add Your First Product
           </Button>
         </div>
-
-        <div className="bg-white rounded-lg shadow">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Price</TableHead>
-                <TableHead>Unit</TableHead>
-                <TableHead>Stock</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {products.map((product) => (
-                <TableRow key={product.id}>
-                  <TableCell className="font-medium">{product.name}</TableCell>
-                  <TableCell>${product.price}</TableCell>
-                  <TableCell>{product.unit}</TableCell>
-                  <TableCell>{product.quantity_available}</TableCell>
-                  <TableCell>
-                    <span className={`px-2 py-1 rounded-full text-xs ${
-                      product.status === 'active' 
-                        ? 'bg-green-100 text-green-800' 
-                        : 'bg-gray-100 text-gray-800'
-                    }`}>
-                      {product.status}
-                    </span>
-                  </TableCell>
-                  <TableCell className="text-right space-x-2">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => navigate(`/dashboard/products/${product.id}`)}
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button variant="ghost" size="sm">
-                          <Trash className="h-4 w-4 text-red-500" />
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Delete Product</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            Are you sure you want to delete this product? This action cannot be undone.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancel</AlertDialogCancel>
-                          <AlertDialogAction
-                            onClick={() => handleDeleteProduct(product.id)}
-                            className="bg-red-500 hover:bg-red-600"
-                          >
-                            Delete
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {products.map((product) => (
+            <div key={product.id} className="bg-white rounded-lg shadow-sm border overflow-hidden">
+              <div className="h-48 bg-gray-100 relative">
+                {product.image_url ? (
+                  <img
+                    src={product.image_url}
+                    alt={product.name}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="flex items-center justify-center h-full text-gray-400">
+                    No image
+                  </div>
+                )}
+              </div>
+              <div className="p-4">
+                <h3 className="font-semibold text-lg mb-1">{product.name}</h3>
+                <p className="text-market-600 font-medium mb-2">
+                  ${product.price.toFixed(2)}
+                </p>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-500">
+                    Stock: {product.quantity_available}
+                  </span>
+                  <Link
+                    to={`/dashboard/products/${product.id}`}
+                    className="text-market-600 hover:text-market-700 font-medium text-sm"
+                  >
+                    Edit
+                  </Link>
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
-      </div>
-    </DashboardLayout>
+      )}
+    </div>
   );
 };
 

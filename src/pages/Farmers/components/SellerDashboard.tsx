@@ -49,10 +49,12 @@ const SellerDashboard = () => {
   }, [navigate, toast]);
 
   const handleManageProducts = () => {
+    console.log("Navigating to products management");
     navigate('/dashboard/products');
   };
 
   const handleViewOrders = () => {
+    console.log("Navigating to orders view");
     navigate('/dashboard/orders');
   };
 

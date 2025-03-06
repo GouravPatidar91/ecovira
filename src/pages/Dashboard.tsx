@@ -25,7 +25,7 @@ const Dashboard = () => {
           .from('profiles')
           .select('role, verification_status')
           .eq('id', user.id)
-          .single();
+          .maybeSingle();
           
         if (error) {
           console.error('Error checking user status:', error);
@@ -38,10 +38,11 @@ const Dashboard = () => {
           return;
         }
         
-        if (data.role === 'farmer' && data.verification_status === 'verified') {
-          // If verified farmer, redirect to products management
-          navigate("/dashboard/products");
-        } else if (data.role === 'farmer' && data.verification_status !== 'verified') {
+        if (data?.role === 'farmer' && data?.verification_status === 'verified') {
+          console.log("Verified farmer detected, redirecting to product management");
+          // If verified farmer, stay on the products management page
+          // We're already on dashboard/products, so we don't need to navigate
+        } else if (data?.role === 'farmer' && data?.verification_status !== 'verified') {
           // If farmer but not verified
           toast({
             title: "Verification Required",
@@ -49,11 +50,16 @@ const Dashboard = () => {
           });
           navigate("/farmers");
         } else {
-          // Regular user, redirect to a default dashboard view
-          navigate("/dashboard/products");
+          // Regular user should also stay on this page
+          console.log("Regular user, staying on dashboard page");
         }
       } catch (error) {
         console.error('Error in dashboard:', error);
+        toast({
+          title: "Error",
+          description: "An error occurred while loading your dashboard",
+          variant: "destructive",
+        });
       } finally {
         setIsLoading(false);
       }
@@ -79,7 +85,7 @@ const Dashboard = () => {
       <Navigation />
       <div className="container mx-auto p-6 mt-8">
         <h1 className="text-2xl font-bold mb-6">Dashboard</h1>
-        <p>Redirecting to dashboard...</p>
+        {/* The actual dashboard content will be rendered by the nested routes */}
       </div>
     </div>
   );
