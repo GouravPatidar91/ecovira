@@ -48,6 +48,14 @@ const SellerDashboard = () => {
     checkSellerStatus();
   }, [navigate, toast]);
 
+  const handleManageProducts = () => {
+    navigate('/dashboard/products');
+  };
+
+  const handleViewOrders = () => {
+    navigate('/dashboard/orders');
+  };
+
   if (isLoading) {
     return <div className="p-6 bg-white rounded-lg shadow-sm border">Loading dashboard...</div>;
   }
@@ -61,13 +69,13 @@ const SellerDashboard = () => {
       <h2 className="text-xl font-semibold mb-4">Seller Dashboard</h2>
       <div className="flex gap-4">
         <Button 
-          onClick={() => navigate('/dashboard/products')}
+          onClick={handleManageProducts}
           className="bg-market-600 hover:bg-market-700"
         >
           Manage Products
         </Button>
         <Button 
-          onClick={() => navigate('/dashboard/orders')}
+          onClick={handleViewOrders}
           variant="outline"
         >
           View Orders

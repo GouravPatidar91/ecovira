@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { Button } from "@/components/ui/button";
 import { Seller } from "./Farmers/types";
 import FarmerHero from "./Farmers/components/FarmerHero";
 import SellerCard from "./Farmers/components/SellerCard";
