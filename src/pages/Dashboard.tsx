@@ -1,6 +1,6 @@
 
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import Navigation from "@/components/Navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -9,6 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 const Dashboard = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(true);
   
@@ -39,9 +40,13 @@ const Dashboard = () => {
         }
         
         if (data?.role === 'farmer' && data?.verification_status === 'verified') {
-          console.log("Verified farmer detected, redirecting to product management");
-          // If verified farmer, stay on the products management page
-          // We're already on dashboard/products, so we don't need to navigate
+          console.log("Verified farmer detected");
+          // If current path is just /dashboard, redirect to products management
+          if (location.pathname === '/dashboard') {
+            console.log("Redirecting to product management");
+            navigate('/dashboard/products');
+          }
+          // Else we're already on a dashboard subpage, so we don't need to navigate
         } else if (data?.role === 'farmer' && data?.verification_status !== 'verified') {
           // If farmer but not verified
           toast({
@@ -66,7 +71,7 @@ const Dashboard = () => {
     };
     
     checkUserStatus();
-  }, [user, navigate, toast]);
+  }, [user, navigate, toast, location.pathname]);
   
   if (isLoading) {
     return (

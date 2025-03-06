@@ -12,8 +12,10 @@ interface Product {
   name: string;
   price: number;
   quantity_available: number;
-  image_url: string | null;
+  images?: string[] | null; // Updated to match Supabase schema
+  image_url?: string | null; // Keep for backward compatibility
   created_at: string;
+  status: string;
 }
 
 const Products = () => {
@@ -80,7 +82,15 @@ const Products = () => {
           return;
         }
 
-        setProducts(data || []);
+        // Map the data to match our Product interface
+        const formattedProducts = data?.map(product => ({
+          ...product,
+          // If images array exists, use the first image as image_url for backwards compatibility
+          image_url: product.images && product.images.length > 0 ? product.images[0] : null
+        })) || [];
+
+        setProducts(formattedProducts);
+        console.log("Products loaded:", formattedProducts);
       } catch (error) {
         console.error("Error in product management:", error);
         toast({
