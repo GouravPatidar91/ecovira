@@ -23,11 +23,13 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
   useEffect(() => {
     const checkUserStatus = async () => {
       if (!user) {
+        console.log("No user found, redirecting to auth");
         navigate("/auth");
         return;
       }
       
       try {
+        console.log("Checking verification status for user:", user.id);
         const { data, error } = await supabase
           .from('profiles')
           .select('role, verification_status')
@@ -45,9 +47,13 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
           return;
         }
         
+        console.log("User profile data:", data);
+        
         if (data?.role === 'farmer' && data?.verification_status === 'verified') {
+          console.log("User is a verified farmer, allowing access");
           setIsVerified(true);
         } else {
+          console.log("User is not a verified farmer, redirecting");
           toast({
             title: "Access Denied",
             description: "You need to be a verified seller to access this dashboard",
@@ -105,7 +111,7 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
               <SidebarMenu>
                 <SidebarMenuItem>
                   <SidebarMenuButton asChild>
-                    <a href="/dashboard" className="flex items-center">
+                    <a href="/dashboard/seller" className="flex items-center">
                       <LayoutGrid className="mr-2 h-4 w-4" />
                       <span>Overview</span>
                     </a>

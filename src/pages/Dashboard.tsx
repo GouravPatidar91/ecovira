@@ -7,7 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
 const Dashboard = () => {
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
@@ -15,12 +15,22 @@ const Dashboard = () => {
   
   useEffect(() => {
     const checkUserStatus = async () => {
+      console.log("Dashboard - Auth loading:", loading);
+      console.log("Dashboard - User:", user);
+      
+      // Wait until auth loading is complete
+      if (loading) {
+        return;
+      }
+      
       if (!user) {
+        console.log("No user found, redirecting to auth");
         navigate("/auth");
         return;
       }
       
       try {
+        console.log("Checking user profile");
         // Check if the user is a verified farmer
         const { data, error } = await supabase
           .from('profiles')
@@ -38,6 +48,8 @@ const Dashboard = () => {
           navigate("/");
           return;
         }
+        
+        console.log("User profile data:", data);
         
         if (data?.role === 'farmer' && data?.verification_status === 'verified') {
           console.log("Verified farmer detected");
@@ -71,9 +83,9 @@ const Dashboard = () => {
     };
     
     checkUserStatus();
-  }, [user, navigate, toast, location.pathname]);
+  }, [user, navigate, toast, location.pathname, loading]);
   
-  if (isLoading) {
+  if (loading || isLoading) {
     return (
       <div className="min-h-screen bg-gray-50">
         <Navigation />
@@ -85,7 +97,9 @@ const Dashboard = () => {
     );
   }
   
-  return (
+  // If the user is not authenticated, this component will redirect in the useEffect
+  // So we only render the dashboard if we have a user
+  return user ? (
     <div className="min-h-screen bg-gray-50">
       <Navigation />
       <div className="container mx-auto p-6 mt-8">
@@ -93,7 +107,7 @@ const Dashboard = () => {
         {/* The actual dashboard content will be rendered by the nested routes */}
       </div>
     </div>
-  );
+  ) : null;
 };
 
 export default Dashboard;

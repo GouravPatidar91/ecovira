@@ -23,6 +23,7 @@ const SellerDashboard = () => {
       if (!user) return;
 
       try {
+        console.log("Fetching dashboard data for user:", user.id);
         setIsLoading(true);
         
         // Fetch product count
@@ -32,6 +33,8 @@ const SellerDashboard = () => {
           .eq('seller_id', user.id);
           
         if (productsError) throw productsError;
+        
+        console.log("Products found:", products?.length || 0);
         
         // Get all orders that contain this seller's products
         const { data: orderItems, error: ordersError } = await supabase
@@ -48,6 +51,8 @@ const SellerDashboard = () => {
           
         if (ordersError) throw ordersError;
         
+        console.log("Order items found:", orderItems?.length || 0);
+        
         // Calculate total revenue
         const revenue = orderItems?.reduce((sum, item) => sum + (Number(item.total_price) || 0), 0) || 0;
         
@@ -63,6 +68,13 @@ const SellerDashboard = () => {
         if (customersError) throw customersError;
         
         const uniqueCustomers = new Set(orders?.map(order => order.buyer_id) || []);
+        
+        console.log("Setting stats:", {
+          products: products?.length || 0,
+          orders: uniqueOrderIds.size,
+          revenue,
+          customers: uniqueCustomers.size,
+        });
         
         setStats({
           products: products?.length || 0,
@@ -163,7 +175,7 @@ const SellerDashboard = () => {
             ) : stats.orders === 0 ? (
               <p className="text-muted-foreground">No orders yet</p>
             ) : (
-              <p>Order list will appear here</p> // Placeholder for future order list component
+              <p>Order list will appear here</p> 
             )}
           </CardContent>
         </Card>
@@ -179,7 +191,7 @@ const SellerDashboard = () => {
             ) : stats.products === 0 ? (
               <p className="text-muted-foreground">No products yet</p>
             ) : (
-              <p>Product list will appear here</p> // Placeholder for future product list component
+              <p>Product list will appear here</p>
             )}
           </CardContent>
         </Card>

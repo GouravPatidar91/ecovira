@@ -35,11 +35,13 @@ const Products = () => {
 
   const fetchProducts = async () => {
     if (!user) {
+      console.log("No user found, redirecting to auth");
       navigate("/auth");
       return;
     }
 
     try {
+      console.log("Fetching products for user:", user.id);
       setIsLoading(true);
       
       const { data, error } = await supabase
@@ -57,6 +59,8 @@ const Products = () => {
         return;
       }
 
+      console.log("Products loaded:", data);
+
       // Map the data to match our Product interface
       const formattedProducts = data?.map(product => ({
         ...product,
@@ -65,7 +69,7 @@ const Products = () => {
       })) || [];
 
       setProducts(formattedProducts);
-      console.log("Products loaded:", formattedProducts);
+      console.log("Products formatted:", formattedProducts);
     } catch (error) {
       console.error("Error in product management:", error);
       toast({
