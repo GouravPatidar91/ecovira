@@ -25,7 +25,7 @@ const Dashboard = () => {
       
       if (!user) {
         console.log("No user found, redirecting to auth");
-        navigate("/auth");
+        navigate("/auth", { state: { from: location.pathname } });
         return;
       }
       
@@ -55,8 +55,8 @@ const Dashboard = () => {
           console.log("Verified farmer detected");
           // If current path is just /dashboard, redirect to seller dashboard
           if (location.pathname === '/dashboard') {
-            console.log("Redirecting to seller dashboard");
-            navigate('/dashboard/seller');
+            console.log("Redirecting to products dashboard");
+            navigate('/dashboard/products');
           }
           // Else we're already on a dashboard subpage, so we don't need to navigate
         } else if (data?.role === 'farmer' && data?.verification_status !== 'verified') {
@@ -67,7 +67,7 @@ const Dashboard = () => {
           });
           navigate("/farmers");
         } else {
-          // Regular user should also stay on this page
+          // Regular user dashboard (not implemented yet)
           console.log("Regular user, staying on dashboard page");
         }
       } catch (error) {

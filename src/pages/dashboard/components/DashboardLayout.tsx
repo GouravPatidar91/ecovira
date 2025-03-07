@@ -1,6 +1,6 @@
 
 import React from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import Navigation from "@/components/Navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { useEffect, useState } from "react";
@@ -14,17 +14,23 @@ interface DashboardLayoutProps {
 }
 
 const DashboardLayout = ({ children }: DashboardLayoutProps) => {
-  const { user, signOut } = useAuth();
+  const { user, signOut, loading: authLoading } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(true);
   const [isVerified, setIsVerified] = useState(false);
 
   useEffect(() => {
     const checkUserStatus = async () => {
+      if (authLoading) {
+        // Still loading auth state, wait
+        return;
+      }
+      
       if (!user) {
         console.log("No user found, redirecting to auth");
-        navigate("/auth");
+        navigate("/auth", { state: { from: location.pathname } });
         return;
       }
       
@@ -75,14 +81,14 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
     };
     
     checkUserStatus();
-  }, [user, navigate, toast]);
+  }, [user, authLoading, navigate, toast, location.pathname]);
 
   const handleSignOut = async () => {
     await signOut();
     navigate("/");
   };
 
-  if (isLoading) {
+  if (authLoading || isLoading) {
     return (
       <div className="min-h-screen bg-gray-50">
         <Navigation />
@@ -94,7 +100,7 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
     );
   }
 
-  if (!isVerified) {
+  if (!isVerified && !isLoading && !authLoading) {
     return null; // Already redirected by the useEffect
   }
   
