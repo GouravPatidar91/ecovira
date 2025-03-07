@@ -84,8 +84,21 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
   }, [user, authLoading, navigate, toast, location.pathname]);
 
   const handleSignOut = async () => {
-    await signOut();
-    navigate("/");
+    try {
+      await signOut();
+      navigate("/");
+    } catch (error) {
+      console.error("Error signing out:", error);
+      toast({
+        title: "Error",
+        description: "Failed to sign out",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const isActive = (path: string) => {
+    return location.pathname === path;
   };
 
   if (authLoading || isLoading) {
@@ -116,7 +129,10 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
             <SidebarGroupContent>
               <SidebarMenu>
                 <SidebarMenuItem>
-                  <SidebarMenuButton asChild>
+                  <SidebarMenuButton 
+                    asChild 
+                    className={isActive("/dashboard/seller") ? "bg-market-50 text-market-700" : ""}
+                  >
                     <a href="/dashboard/seller" className="flex items-center">
                       <LayoutGrid className="mr-2 h-4 w-4" />
                       <span>Overview</span>
@@ -124,7 +140,10 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
                   </SidebarMenuButton>
                 </SidebarMenuItem>
                 <SidebarMenuItem>
-                  <SidebarMenuButton asChild>
+                  <SidebarMenuButton 
+                    asChild
+                    className={isActive("/dashboard/products") ? "bg-market-50 text-market-700" : ""}
+                  >
                     <a href="/dashboard/products" className="flex items-center">
                       <Package className="mr-2 h-4 w-4" />
                       <span>Products</span>
@@ -132,7 +151,10 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
                   </SidebarMenuButton>
                 </SidebarMenuItem>
                 <SidebarMenuItem>
-                  <SidebarMenuButton asChild>
+                  <SidebarMenuButton 
+                    asChild
+                    className={isActive("/dashboard/orders") ? "bg-market-50 text-market-700" : ""}
+                  >
                     <a href="/dashboard/orders" className="flex items-center">
                       <ShoppingCart className="mr-2 h-4 w-4" />
                       <span>Orders</span>
@@ -147,7 +169,10 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
             <SidebarGroupContent>
               <SidebarMenu>
                 <SidebarMenuItem>
-                  <SidebarMenuButton asChild>
+                  <SidebarMenuButton 
+                    asChild
+                    className={isActive("/dashboard/settings") ? "bg-market-50 text-market-700" : ""}
+                  >
                     <a href="/dashboard/settings" className="flex items-center">
                       <Settings className="mr-2 h-4 w-4" />
                       <span>Settings</span>

@@ -56,7 +56,7 @@ const Dashboard = () => {
           // If current path is just /dashboard, redirect to seller dashboard
           if (location.pathname === '/dashboard') {
             console.log("Redirecting to products dashboard");
-            navigate('/dashboard/products');
+            navigate('/dashboard/seller');
           }
           // Else we're already on a dashboard subpage, so we don't need to navigate
         } else if (data?.role === 'farmer' && data?.verification_status !== 'verified') {

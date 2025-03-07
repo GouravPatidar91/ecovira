@@ -10,6 +10,7 @@ import Payment from "@/pages/Payment";
 import Dashboard from "@/pages/Dashboard";
 import SellerDashboard from "@/pages/dashboard/SellerDashboard";
 import Products from "@/pages/dashboard/Products";
+import Orders from "@/pages/dashboard/Orders";
 import SellerVerification from "@/pages/SellerVerification";
 import Chats from "@/pages/Chats";
 import { Toaster } from "@/components/ui/toaster";
@@ -34,7 +35,7 @@ function App() {
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/dashboard/seller" element={<SellerDashboard />} />
               <Route path="/dashboard/products" element={<Products />} />
-              <Route path="/dashboard/orders" element={<div>Dashboard Orders</div>} />
+              <Route path="/dashboard/orders" element={<Orders />} />
               <Route path="/seller-verification" element={<SellerVerification />} />
               <Route path="/chats" element={<Chats />} />
             </Routes>
