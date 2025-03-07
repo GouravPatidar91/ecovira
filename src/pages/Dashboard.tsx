@@ -51,7 +51,14 @@ const Dashboard = () => {
         
         console.log("User profile data:", data);
         
-        if (data?.role === 'farmer' && data?.verification_status === 'verified') {
+        if (data?.role === 'admin') {
+          console.log("Admin user detected");
+          // If current path is just /dashboard, redirect to admin verification page
+          if (location.pathname === '/dashboard') {
+            console.log("Redirecting to admin verification dashboard");
+            navigate('/dashboard/admin/verification');
+          }
+        } else if (data?.role === 'farmer' && data?.verification_status === 'verified') {
           console.log("Verified farmer detected");
           // If current path is just /dashboard, redirect to seller dashboard
           if (location.pathname === '/dashboard') {
@@ -59,11 +66,19 @@ const Dashboard = () => {
             navigate('/dashboard/seller');
           }
           // Else we're already on a dashboard subpage, so we don't need to navigate
-        } else if (data?.role === 'farmer' && data?.verification_status !== 'verified') {
-          // If farmer but not verified
+        } else if (data?.role === 'farmer' && data?.verification_status === 'pending') {
+          // If farmer but verification is pending
           toast({
-            title: "Verification Required",
-            description: "You need to be verified to access the seller dashboard",
+            title: "Verification Pending",
+            description: "Your seller verification is still under review",
+          });
+          navigate("/farmers");
+        } else if (data?.role === 'farmer' && data?.verification_status === 'rejected') {
+          // If farmer but verification was rejected
+          toast({
+            title: "Verification Rejected",
+            description: "Your seller application was not approved. Please contact support.",
+            variant: "destructive"
           });
           navigate("/farmers");
         } else {

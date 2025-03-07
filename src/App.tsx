@@ -12,6 +12,7 @@ import SellerDashboard from "@/pages/dashboard/SellerDashboard";
 import Products from "@/pages/dashboard/Products";
 import Orders from "@/pages/dashboard/Orders";
 import SellerVerification from "@/pages/SellerVerification";
+import AdminVerification from "@/pages/dashboard/AdminVerification";
 import Chats from "@/pages/Chats";
 import { Toaster } from "@/components/ui/toaster";
 import { CartProvider } from "@/contexts/cart";
@@ -36,6 +37,7 @@ function App() {
               <Route path="/dashboard/seller" element={<SellerDashboard />} />
               <Route path="/dashboard/products" element={<Products />} />
               <Route path="/dashboard/orders" element={<Orders />} />
+              <Route path="/dashboard/admin/verification" element={<AdminVerification />} />
               <Route path="/seller-verification" element={<SellerVerification />} />
               <Route path="/chats" element={<Chats />} />
             </Routes>
