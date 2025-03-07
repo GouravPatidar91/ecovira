@@ -10,7 +10,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { FileUpload } from "lucide-react";
+import { Upload } from "lucide-react";
 
 const SellerVerification = () => {
   const { user } = useAuth();
@@ -229,7 +229,7 @@ const SellerVerification = () => {
                       )
                     ) : (
                       <div className="space-y-2">
-                        <FileUpload className="mx-auto h-10 w-10 text-gray-400" />
+                        <Upload className="mx-auto h-10 w-10 text-gray-400" />
                         <p className="text-sm text-gray-500">
                           Upload a government-issued ID or business license
                         </p>
