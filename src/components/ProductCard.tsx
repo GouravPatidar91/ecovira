@@ -6,6 +6,7 @@ import { useCart } from "@/contexts/cart";
 import ChatButton from "@/components/ChatButton";
 import ProductRating from "@/components/ProductRating";
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 interface ProductCardProps {
   id: string;
@@ -35,10 +36,9 @@ const ProductCard = ({
   seller_id,
 }: ProductCardProps) => {
   const { addToCart } = useCart();
-  const [chatError, setChatError] = useState(false);
+  const navigate = useNavigate();
 
   const handleAddToCart = () => {
-    console.log("Adding to cart:", { id, name, price, unit, image });
     addToCart({
       id,
       name,
@@ -48,9 +48,16 @@ const ProductCard = ({
     }, 1);
   };
 
+  const handleProductClick = () => {
+    navigate(`/product/${id}`);
+  };
+
   return (
     <Card className="overflow-hidden hover:shadow-lg transition-shadow duration-300">
-      <div className="relative aspect-square">
+      <div 
+        className="relative aspect-square cursor-pointer" 
+        onClick={handleProductClick}
+      >
         <img
           src={image}
           alt={name}
@@ -66,7 +73,12 @@ const ProductCard = ({
       <CardHeader className="p-4">
         <div className="flex justify-between items-start">
           <div>
-            <h3 className="font-semibold text-lg">{name}</h3>
+            <h3 
+              className="font-semibold text-lg cursor-pointer hover:text-primary"
+              onClick={handleProductClick}
+            >
+              {name}
+            </h3>
             <p className="text-gray-500 text-sm">${price} per {unit}</p>
           </div>
         </div>
@@ -76,7 +88,7 @@ const ProductCard = ({
           <p className="font-medium text-gray-900">{farmer}</p>
           <p>{location}</p>
           <ProductRating productId={id} size="sm" />
-          <p className="text-xs text-gray-500">{description}</p>
+          <p className="text-xs text-gray-500 line-clamp-2">{description}</p>
         </div>
       </CardContent>
       <CardFooter className="p-4 pt-0 flex flex-col gap-2">
@@ -88,36 +100,14 @@ const ProductCard = ({
           {quantity_available === 0 ? "Out of Stock" : "Add to Cart"}
         </Button>
         
-        {/* Wrap ChatButton in error boundary */}
-        {!chatError ? (
-          <div className="w-full">
-            <ErrorBoundary onError={() => setChatError(true)}>
-              <ChatButton 
-                sellerId={seller_id} 
-                productId={id} 
-                className="w-full"
-              />
-            </ErrorBoundary>
-          </div>
-        ) : (
-          <Button variant="outline" className="w-full" disabled>
-            Chat Unavailable
-          </Button>
-        )}
+        <ChatButton 
+          sellerId={seller_id} 
+          productId={id} 
+          className="w-full"
+        />
       </CardFooter>
     </Card>
   );
-};
-
-// Simple Error Boundary Component
-const ErrorBoundary = ({ children, onError }: { children: React.ReactNode, onError: () => void }) => {
-  try {
-    return <>{children}</>;
-  } catch (error) {
-    onError();
-    console.error("Error in ChatButton:", error);
-    return null;
-  }
 };
 
 export default ProductCard;
