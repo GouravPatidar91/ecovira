@@ -56,7 +56,7 @@ const ChatButton = ({
     <Button 
       onClick={handleChat} 
       variant={variant} 
-      className={className}
+      className={`flex items-center ${className}`}
       disabled={isLoading}
     >
       <MessageSquare className="mr-2 h-4 w-4" />

@@ -79,6 +79,21 @@
   }
 }
 
+/* Layout Utilities */
+@layer components {
+  .container-layout {
+    @apply container mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl;
+  }
+  
+  .section-padding {
+    @apply py-8 md:py-12 lg:py-16;
+  }
+  
+  .page-container {
+    @apply min-h-screen bg-gray-50;
+  }
+}
+
 /* Custom Animations */
 .hover-scale {
   @apply transition-transform duration-300 hover:scale-105;

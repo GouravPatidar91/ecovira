@@ -5,7 +5,6 @@ import { Leaf } from "lucide-react";
 import { useCart } from "@/contexts/cart";
 import ChatButton from "@/components/ChatButton";
 import ProductRating from "@/components/ProductRating";
-import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 interface ProductCardProps {
@@ -53,9 +52,9 @@ const ProductCard = ({
   };
 
   return (
-    <Card className="overflow-hidden hover:shadow-lg transition-shadow duration-300">
+    <Card className="overflow-hidden hover:shadow-lg transition-shadow duration-300 h-full flex flex-col">
       <div 
-        className="relative aspect-square cursor-pointer" 
+        className="relative aspect-square cursor-pointer overflow-hidden" 
         onClick={handleProductClick}
       >
         <img
@@ -83,7 +82,7 @@ const ProductCard = ({
           </div>
         </div>
       </CardHeader>
-      <CardContent className="p-4 pt-0">
+      <CardContent className="p-4 pt-0 flex-grow">
         <div className="text-sm text-gray-600 space-y-2">
           <p className="font-medium text-gray-900">{farmer}</p>
           <p>{location}</p>

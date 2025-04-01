@@ -53,9 +53,9 @@ const Chats = () => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="page-container">
         <Navigation />
-        <div className="container mx-auto p-4 mt-8 flex justify-center items-center">
+        <div className="container-layout section-padding flex justify-center items-center">
           <div className="text-center">
             <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto mb-4" />
             <p className="text-gray-500">Loading your conversations...</p>
@@ -67,9 +67,9 @@ const Chats = () => {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="page-container">
         <Navigation />
-        <div className="container mx-auto p-4 mt-8">
+        <div className="container-layout section-padding">
           <div className="bg-white rounded-lg shadow-sm p-8 text-center">
             <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
             <h2 className="text-xl font-semibold mb-2">Error Loading Conversations</h2>
@@ -84,12 +84,12 @@ const Chats = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="page-container">
       <Navigation />
-      <div className="container mx-auto p-4 mt-8">
+      <div className="container-layout section-padding">
         <h1 className="text-2xl font-bold mb-6">Messages</h1>
         <div className="bg-white rounded-lg shadow overflow-hidden">
-          <div className="grid grid-cols-1 md:grid-cols-4 min-h-[500px]">
+          <div className="grid grid-cols-1 md:grid-cols-4 min-h-[500px] lg:min-h-[600px]">
             <div className="col-span-1 border-r border-gray-200">
               {state.conversations.length > 0 ? (
                 <ChatList 
