@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
@@ -31,6 +32,11 @@ export function CartSheet() {
 
   const handleCheckout = async () => {
     if (!shippingAddress.trim()) {
+      toast({
+        title: "Missing Address",
+        description: "Please provide a shipping address",
+        variant: "destructive",
+      });
       return;
     }
 
@@ -45,6 +51,7 @@ export function CartSheet() {
           description: "Please login to complete your order",
           variant: "destructive",
         });
+        setIsProcessing(false);
         return;
       }
 
@@ -61,7 +68,14 @@ export function CartSheet() {
         .select()
         .single();
 
-      if (orderError) throw orderError;
+      if (orderError) {
+        console.error('Order creation error:', orderError);
+        throw new Error('Failed to create order');
+      }
+
+      if (!orderData || !orderData.id) {
+        throw new Error('Order data is missing');
+      }
 
       // Create order items
       const orderItems = items.map(item => ({
@@ -76,9 +90,15 @@ export function CartSheet() {
         .from('order_items')
         .insert(orderItems);
 
-      if (itemsError) throw itemsError;
+      if (itemsError) {
+        console.error('Order items error:', itemsError);
+        throw new Error('Failed to create order items');
+      }
 
       setIsCheckoutDialogOpen(false);
+      
+      // Clear cart after successful order
+      await clearCart();
       
       // Redirect to payment page
       navigate(`/payment?orderId=${orderData.id}&amount=${totalAmount}`);
@@ -87,7 +107,7 @@ export function CartSheet() {
       console.error('Error during checkout:', error);
       toast({
         title: "Error",
-        description: "Failed to process your order",
+        description: "Failed to process your order. Please try again.",
         variant: "destructive",
       });
     } finally {

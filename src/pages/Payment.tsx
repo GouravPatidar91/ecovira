@@ -39,6 +39,10 @@ const Payment = () => {
 
   const handlePaymentComplete = async (paymentId: string) => {
     try {
+      if (!orderId) {
+        throw new Error('Order ID is missing');
+      }
+
       // Update order with payment details
       const { error } = await supabase
         .from('orders')
@@ -48,7 +52,10 @@ const Payment = () => {
         })
         .eq('id', orderId);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error updating order:', error);
+        throw error;
+      }
 
       toast({
         title: "Payment Successful",

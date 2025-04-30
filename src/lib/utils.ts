@@ -7,6 +7,7 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export function formatOrderId(id: string, length = 8) {
+  if (!id) return '';
   return id.slice(0, length);
 }
 
