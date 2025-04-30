@@ -3,8 +3,7 @@ import { createContext, useReducer } from 'react';
 import { cartReducer } from './cartReducer';
 import { CartState, CartAction, Product } from './types';
 import { useCartData } from './useCartData';
-import { cartService } from './cartService';
-import { supabase } from '@/integrations/supabase/client';
+import { useCartOperations } from './useCartOperations';
 
 // Define the context type
 interface CartContextType {
@@ -26,62 +25,8 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
   // Load cart data and setup subscription
   useCartData(dispatch);
   
-  // Define cart operations directly instead of using the hook
-  const addToCart = async (product: Product, quantity: number) => {
-    try {
-      dispatch({ type: 'SET_LOADING', payload: true });
-      const { data } = await supabase.auth.getSession();
-      if (data.session) {
-        await cartService.addToCart(data.session.user.id, product, quantity);
-      }
-    } catch (error) {
-      console.error('Error adding to cart:', error);
-    } finally {
-      dispatch({ type: 'SET_LOADING', payload: false });
-    }
-  };
-
-  const removeFromCart = async (productId: string) => {
-    try {
-      dispatch({ type: 'SET_LOADING', payload: true });
-      const { data } = await supabase.auth.getSession();
-      if (data.session) {
-        await cartService.removeFromCart(data.session.user.id, productId);
-      }
-    } catch (error) {
-      console.error('Error removing from cart:', error);
-    } finally {
-      dispatch({ type: 'SET_LOADING', payload: false });
-    }
-  };
-
-  const updateQuantity = async (itemId: string, quantity: number) => {
-    try {
-      dispatch({ type: 'SET_LOADING', payload: true });
-      const { data } = await supabase.auth.getSession();
-      if (data.session) {
-        await cartService.updateQuantity(data.session.user.id, itemId, quantity);
-      }
-    } catch (error) {
-      console.error('Error updating quantity:', error);
-    } finally {
-      dispatch({ type: 'SET_LOADING', payload: false });
-    }
-  };
-
-  const clearCart = async () => {
-    try {
-      dispatch({ type: 'SET_LOADING', payload: true });
-      const { data } = await supabase.auth.getSession();
-      if (data.session) {
-        await cartService.clearCart(data.session.user.id);
-      }
-    } catch (error) {
-      console.error('Error clearing cart:', error);
-    } finally {
-      dispatch({ type: 'SET_LOADING', payload: false });
-    }
-  };
+  // Use the cart operations hook for cart functionality
+  const { addToCart, removeFromCart, updateQuantity, clearCart } = useCartOperations();
 
   return (
     <CartContext.Provider value={{ 

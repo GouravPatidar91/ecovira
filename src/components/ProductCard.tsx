@@ -1,11 +1,13 @@
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
-import { Leaf } from "lucide-react";
+import { Leaf, ShoppingBag } from "lucide-react";
 import { useCart } from "@/contexts/cart";
 import ChatButton from "@/components/ChatButton";
 import ProductRating from "@/components/ProductRating";
 import { useNavigate } from "react-router-dom";
+import { useState } from "react";
+import { useToast } from "@/hooks/use-toast";
 
 interface ProductCardProps {
   id: string;
@@ -35,16 +37,35 @@ const ProductCard = ({
   seller_id,
 }: ProductCardProps) => {
   const { addToCart } = useCart();
+  const { toast } = useToast();
   const navigate = useNavigate();
+  const [isAddingToCart, setIsAddingToCart] = useState(false);
 
-  const handleAddToCart = () => {
-    addToCart({
-      id,
-      name,
-      price,
-      unit,
-      images: [image],
-    }, 1);
+  const handleAddToCart = async () => {
+    try {
+      setIsAddingToCart(true);
+      await addToCart({
+        id,
+        name,
+        price,
+        unit,
+        images: [image],
+      }, 1);
+      
+      toast({
+        title: "Success",
+        description: `${name} has been added to your cart.`,
+      });
+    } catch (error) {
+      console.error("Error adding product to cart:", error);
+      toast({
+        title: "Error",
+        description: "Could not add item to cart. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsAddingToCart(false);
+    }
   };
 
   const handleProductClick = () => {
@@ -94,11 +115,12 @@ const ProductCard = ({
       <CardFooter className="p-3 sm:p-4 pt-0 flex flex-col gap-2">
         <Button
           onClick={handleAddToCart}
-          disabled={quantity_available === 0}
+          disabled={quantity_available === 0 || isAddingToCart}
           className="w-full text-sm sm:text-base"
           size="sm"
         >
-          {quantity_available === 0 ? "Out of Stock" : "Add to Cart"}
+          <ShoppingBag className="w-4 h-4 mr-1" />
+          {isAddingToCart ? "Adding..." : quantity_available === 0 ? "Out of Stock" : "Add to Cart"}
         </Button>
         
         <ChatButton 
