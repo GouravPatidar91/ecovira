@@ -4,10 +4,12 @@ import AuthForm from "@/components/AuthForm";
 
 const Auth = () => {
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="page-container">
       <Navigation />
-      <div className="container mx-auto px-4 py-16">
-        <AuthForm />
+      <div className="container-layout section-padding">
+        <div className="max-w-md mx-auto">
+          <AuthForm />
+        </div>
       </div>
     </div>
   );

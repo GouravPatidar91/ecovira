@@ -1,3 +1,4 @@
+
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Navigation from "@/components/Navigation";
@@ -38,10 +39,10 @@ const ChatList = () => {
 
   return (
     <CartProvider>
-      <div className="min-h-screen bg-gray-50">
+      <div className="page-container">
         <Navigation />
         
-        <div className="container mx-auto pt-24 pb-16 px-4">
+        <div className="container-layout section-padding">
           <div className="max-w-3xl mx-auto">
             <h1 className="text-2xl font-bold mb-6">Conversations</h1>
             
@@ -65,7 +66,7 @@ const ChatList = () => {
                     className="bg-white rounded-lg shadow-sm p-4 hover:shadow-md transition-shadow cursor-pointer"
                     onClick={() => handleOpenChat(conversation.id)}
                   >
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between flex-wrap gap-2">
                       <div>
                         <h3 className="font-medium">{conversation.other_user_name}</h3>
                         {conversation.product_name && (

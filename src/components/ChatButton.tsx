@@ -6,6 +6,7 @@ import { useChat } from "@/contexts/chat";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface ChatButtonProps {
   sellerId: string;
@@ -25,6 +26,7 @@ const ChatButton = ({
   const navigate = useNavigate();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
+  const isMobile = useIsMobile();
 
   const handleChat = async () => {
     if (!user) {
@@ -58,9 +60,10 @@ const ChatButton = ({
       variant={variant} 
       className={`flex items-center ${className}`}
       disabled={isLoading}
+      size={isMobile ? "sm" : "default"}
     >
       <MessageSquare className="mr-2 h-4 w-4" />
-      {isLoading ? "Connecting..." : "Chat with Seller"}
+      {isLoading ? "Connecting..." : isMobile ? "Chat" : "Chat with Seller"}
     </Button>
   );
 };

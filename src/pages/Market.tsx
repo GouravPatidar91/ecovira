@@ -9,6 +9,7 @@ import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { ErrorBoundary } from "react-error-boundary";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface Product {
   id: string;
@@ -32,6 +33,7 @@ const Market = () => {
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     const fetchProducts = async () => {
@@ -88,9 +90,9 @@ const Market = () => {
 
   // Fallback UI for errors
   const ErrorFallback = ({ error, resetErrorBoundary }: { error: Error, resetErrorBoundary: () => void }) => (
-    <div className="p-8 text-center">
-      <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-      <h2 className="text-xl font-semibold text-red-600 mb-2">Something went wrong</h2>
+    <div className="p-4 sm:p-8 text-center">
+      <AlertCircle className="h-10 w-10 sm:h-12 sm:w-12 text-red-500 mx-auto mb-4" />
+      <h2 className="text-lg sm:text-xl font-semibold text-red-600 mb-2">Something went wrong</h2>
       <p className="mb-4 text-gray-600">We're having trouble loading the marketplace.</p>
       <Button onClick={resetErrorBoundary}>
         Try Again
@@ -99,32 +101,32 @@ const Market = () => {
   );
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="page-container">
       <Navigation />
       
       {/* Hero Section */}
-      <section className="pt-24 pb-12 px-4 bg-gradient-to-r from-market-50 to-market-100">
-        <div className="container mx-auto max-w-6xl">
-          <div className="text-center space-y-6">
-            <h1 className="text-4xl md:text-5xl font-bold text-gray-900">
+      <section className="pt-16 sm:pt-20 md:pt-24 pb-8 sm:pb-12 px-4 bg-gradient-to-r from-market-50 to-market-100">
+        <div className="container-layout">
+          <div className="text-center space-y-4 sm:space-y-6">
+            <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-gray-900">
               Fresh, Local Produce at Your Fingertips
             </h1>
-            <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+            <p className="text-base sm:text-lg text-gray-600 max-w-2xl mx-auto">
               Browse our selection of fresh, locally sourced produce directly from farmers in your area
             </p>
             
             {/* Search and Filter */}
-            <div className="flex flex-col md:flex-row gap-4 max-w-2xl mx-auto mt-8">
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 max-w-2xl mx-auto mt-6 sm:mt-8">
               <div className="relative flex-1">
-                <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                <Search className="absolute left-3 sm:left-4 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4 sm:h-5 sm:w-5" />
                 <input
                   type="text"
                   placeholder="Search products..."
-                  className="w-full pl-12 pr-4 py-3 rounded-full border border-gray-200 focus:outline-none focus:ring-2 focus:ring-market-500 focus:border-transparent"
+                  className="w-full pl-10 sm:pl-12 pr-4 py-2 sm:py-3 rounded-full border border-gray-200 focus:outline-none focus:ring-2 focus:ring-market-500 focus:border-transparent text-sm sm:text-base"
                 />
               </div>
               <Button variant="outline" className="flex items-center gap-2">
-                <Filter className="h-5 w-5" />
+                <Filter className="h-4 w-4 sm:h-5 sm:w-5" />
                 Filters
               </Button>
             </div>
@@ -133,23 +135,23 @@ const Market = () => {
       </section>
 
       {/* Products Grid */}
-      <section className="py-12 px-4">
-        <div className="container mx-auto max-w-6xl">
+      <section className="py-6 sm:py-8 md:py-12 px-4">
+        <div className="container-layout">
           <ErrorBoundary 
             FallbackComponent={ErrorFallback}
             onReset={() => window.location.reload()}
           >
             {error ? (
-              <div className="text-center py-10 bg-white rounded-lg shadow-sm p-8">
-                <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-                <h2 className="text-xl font-semibold mb-4">{error}</h2>
+              <div className="text-center py-8 sm:py-10 bg-white rounded-lg shadow-sm p-4 sm:p-8">
+                <AlertCircle className="h-10 w-10 sm:h-12 sm:w-12 text-red-500 mx-auto mb-4" />
+                <h2 className="text-lg sm:text-xl font-semibold mb-4">{error}</h2>
                 <Button onClick={() => window.location.reload()}>
                   Try Again
                 </Button>
               </div>
             ) : isLoading ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                {[...Array(8)].map((_, index) => (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
+                {[...Array(isMobile ? 4 : 8)].map((_, index) => (
                   <div key={index} className="animate-pulse">
                     <div className="bg-gray-200 aspect-square rounded-lg mb-4" />
                     <div className="h-4 bg-gray-200 rounded w-3/4 mb-2" />
@@ -158,7 +160,7 @@ const Market = () => {
                 ))}
               </div>
             ) : products.length > 0 ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
                 {products.map((product) => (
                   <ProductCard
                     key={product.id}
