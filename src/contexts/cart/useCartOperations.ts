@@ -1,4 +1,3 @@
-
 import { useContext } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
@@ -25,7 +24,7 @@ export const useCartOperations = () => {
         description: "Invalid product data",
         variant: "destructive",
       });
-      return;
+      throw new Error('Invalid product data');
     }
 
     const { data: { session } } = await supabase.auth.getSession();
@@ -35,13 +34,15 @@ export const useCartOperations = () => {
         description: "Please log in to add items to your cart",
         variant: "destructive",
       });
-      return;
+      throw new Error('Authentication required');
     }
 
     try {
       dispatch({ type: 'SET_LOADING', payload: true });
+      console.log('Adding product to cart:', product);
 
       const result = await cartService.addToCart(session.user.id, product, quantity);
+      console.log('Cart service result:', result);
       
       if (result.type === 'update') {
         // Update cart state
@@ -65,6 +66,7 @@ export const useCartOperations = () => {
         description: "Failed to add item to cart. Please try again.",
         variant: "destructive",
       });
+      throw error;
     } finally {
       dispatch({ type: 'SET_LOADING', payload: false });
     }

@@ -24,7 +24,12 @@ export const cartService = {
       `)
       .eq('user_id', session.user.id);
 
-    if (error) throw error;
+    if (error) {
+      console.error('Error loading cart:', error);
+      throw error;
+    }
+
+    console.log('Cart items from DB:', cartItems);
 
     const formattedItems = cartItems.map(item => ({
       id: item.id,
@@ -36,6 +41,7 @@ export const cartService = {
       image: item.products.images?.[0] || '',
     }));
 
+    console.log('Formatted cart items:', formattedItems);
     return formattedItems;
   },
 
@@ -75,20 +81,20 @@ export const cartService = {
       .maybeSingle();
 
     if (queryError) {
+      console.error('Error checking for existing item:', queryError);
       throw queryError;
     }
 
     if (existingItem) {
       // Update quantity if item exists
       const newQuantity = existingItem.quantity + quantity;
-      const { data: updatedItem, error: updateError } = await supabase
+      const { error: updateError } = await supabase
         .from('cart_items')
         .update({ quantity: newQuantity })
-        .eq('id', existingItem.id)
-        .select('id, quantity')
-        .single();
+        .eq('id', existingItem.id);
 
       if (updateError) {
+        console.error('Error updating cart item:', updateError);
         throw updateError;
       }
 
@@ -110,7 +116,12 @@ export const cartService = {
         .single();
 
       if (insertError) {
+        console.error('Error inserting cart item:', insertError);
         throw insertError;
+      }
+
+      if (!insertedItem) {
+        throw new Error('Failed to insert item into cart');
       }
 
       const cartItem: CartItem = {

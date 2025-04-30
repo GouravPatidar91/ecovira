@@ -1,3 +1,4 @@
+
 import {
   Sheet,
   SheetContent,
@@ -7,24 +8,36 @@ import {
 } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { X } from "lucide-react";
+import { X, ShoppingBag } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { useCart } from "@/contexts/cart";
 import { formatCurrency } from "@/lib/utils";
+import { useState } from "react";
 
 export function CartSheet() {
   const { items, loading, updateQuantity, removeFromCart, clearCart } = useCart();
+  const [isOpen, setIsOpen] = useState(false);
 
   const calculateTotal = () => {
     return items.reduce((total, item) => total + item.price * item.quantity, 0);
   };
 
+  const handleOpenChange = (open: boolean) => {
+    setIsOpen(open);
+  };
+
   return (
-    <Sheet>
+    <Sheet open={isOpen} onOpenChange={handleOpenChange}>
       <SheetTrigger asChild>
-        <Button variant="outline">
-          Cart ({items.length})
+        <Button variant="outline" className="relative" onClick={() => setIsOpen(true)}>
+          <ShoppingBag className="h-5 w-5" />
+          <span className="ml-2">Cart</span>
+          {items.length > 0 && (
+            <Badge variant="destructive" className="absolute -top-2 -right-2 h-5 w-5 p-0 flex items-center justify-center">
+              {items.length}
+            </Badge>
+          )}
         </Button>
       </SheetTrigger>
       <SheetContent className="w-full sm:w-[400px] md:w-[500px] lg:w-[600px]">
@@ -65,7 +78,7 @@ export function CartSheet() {
                     </div>
                   </div>
                   <div className="flex items-center justify-end space-x-2">
-                    <Button variant="ghost" size="icon" onClick={() => removeFromCart(item.id)}>
+                    <Button variant="ghost" size="icon" onClick={() => removeFromCart(item.product_id)}>
                       <X className="h-4 w-4" />
                     </Button>
                     <div>{formatCurrency(item.price * item.quantity)}</div>

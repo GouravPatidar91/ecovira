@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { useCart } from "@/contexts/CartContext";
+import { useCart } from "@/contexts/cart";
 import { CartSheet } from "@/components/CartSheet";
 import {
   Home,
