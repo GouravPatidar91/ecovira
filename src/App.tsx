@@ -1,54 +1,75 @@
 
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import Index from "@/pages/Index";
-import Market from "@/pages/Market";
-import Auth from "@/pages/Auth";
-import Farmers from "@/pages/Farmers";
+import { BrowserRouter, Routes, Route, Outlet } from "react-router-dom";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { ChatProvider } from "./contexts/ChatContext";
+import { Toaster } from "./components/ui/toaster"; // Using relative path instead of alias
+import { AuthProvider } from "./contexts/AuthContext";
+
 import About from "@/pages/About";
-import ProductDetail from "@/pages/ProductDetail";
+import Index from "@/pages/Index";
+import Auth from "@/pages/Auth";
+import Market from "@/pages/Market";
+import Farmers from "@/pages/Farmers";
+import NotFound from "@/pages/NotFound";
 import Payment from "@/pages/Payment";
-import Dashboard from "@/pages/Dashboard";
-import SellerDashboard from "@/pages/dashboard/SellerDashboard";
 import Products from "@/pages/dashboard/Products";
 import Orders from "@/pages/dashboard/Orders";
-import SellerVerification from "@/pages/SellerVerification";
+import ProductForm from "@/pages/dashboard/ProductForm";
+import DashboardLayout from "@/components/DashboardLayout";
 import AdminVerification from "@/pages/dashboard/AdminVerification";
-import Chats from "@/pages/Chats";
-import { Toaster } from "@/components/ui/toaster";
-import { CartProvider } from "@/contexts/cart";
-import { AuthProvider } from "@/contexts/AuthContext";
-import { SidebarProvider } from "@/components/ui/sidebar";
-import { ChatProvider } from "@/contexts/chat";
+import SellerVerification from "@/pages/SellerVerification";
+import Inventory from "@/pages/dashboard/Inventory";
+import AdminRoute from "@/components/AdminRoute";
+import ChatList from "@/pages/ChatList";
+import Chat from "@/pages/Chat";
+
+// Create a client
+const queryClient = new QueryClient();
 
 function App() {
   return (
-    <BrowserRouter>
+    <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <CartProvider>
-          <ChatProvider>
-            <SidebarProvider>
+        <ChatProvider>
+          <BrowserRouter>
+            <div className="min-h-screen">
               <Routes>
                 <Route path="/" element={<Index />} />
-                <Route path="/market" element={<Market />} />
-                <Route path="/auth" element={<Auth />} />
-                <Route path="/farmers" element={<Farmers />} />
                 <Route path="/about" element={<About />} />
-                <Route path="/product/:id" element={<ProductDetail />} />
+                <Route path="/auth" element={<Auth />} />
+                <Route path="/market" element={<Market />} />
+                <Route path="/farmers" element={<Farmers />} />
                 <Route path="/payment" element={<Payment />} />
-                <Route path="/dashboard" element={<Dashboard />} />
-                <Route path="/dashboard/seller" element={<SellerDashboard />} />
-                <Route path="/dashboard/products" element={<Products />} />
-                <Route path="/dashboard/orders" element={<Orders />} />
-                <Route path="/dashboard/admin/verification" element={<AdminVerification />} />
+                <Route path="/chats" element={<ChatList />} />
+                <Route path="/chat" element={<Chat />} />
+
                 <Route path="/seller-verification" element={<SellerVerification />} />
-                <Route path="/chats" element={<Chats />} />
+
+                {/* Fix: Use nested routes pattern with Outlet to properly provide children */}
+                <Route path="/dashboard" element={<DashboardLayout><Outlet /></DashboardLayout>}>
+                  <Route path="products" element={<Products />} />
+                  <Route path="products/new" element={<ProductForm />} />
+                  <Route path="products/edit/:id" element={<ProductForm />} />
+                  <Route path="orders" element={<Orders />} />
+                  <Route path="inventory" element={<Inventory />} />
+                  <Route
+                    path="admin-verification"
+                    element={
+                      <AdminRoute>
+                        <AdminVerification />
+                      </AdminRoute>
+                    }
+                  />
+                </Route>
+
+                <Route path="*" element={<NotFound />} />
               </Routes>
-            </SidebarProvider>
+            </div>
             <Toaster />
-          </ChatProvider>
-        </CartProvider>
+          </BrowserRouter>
+        </ChatProvider>
       </AuthProvider>
-    </BrowserRouter>
+    </QueryClientProvider>
   );
 }
 

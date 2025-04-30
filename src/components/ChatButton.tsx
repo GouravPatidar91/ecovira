@@ -1,52 +1,58 @@
-
-import { useState } from "react";
+import { MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { MessageSquare } from "lucide-react";
 import { useChat } from "@/contexts/chat";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { useIsMobile } from "@/hooks/use-mobile";
 
 interface ChatButtonProps {
   sellerId: string;
-  productId?: string;
+  productId: string;
   className?: string;
-  variant?: "default" | "destructive" | "outline" | "secondary" | "ghost" | "link";
 }
 
-const ChatButton = ({ 
-  sellerId, 
-  productId, 
-  className = "", 
-  variant = "outline" 
-}: ChatButtonProps) => {
-  const { user } = useAuth();
+const ChatButton = ({ sellerId, productId, className }: ChatButtonProps) => {
   const { startConversation } = useChat();
+  const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [isLoading, setIsLoading] = useState(false);
-  const isMobile = useIsMobile();
 
-  const handleChat = async () => {
-    if (!user) {
-      navigate("/auth");
-      toast({
-        title: "Authentication required",
-        description: "Please log in to chat with sellers",
-      });
-      return;
-    }
-    
+  const handleChatClick = async () => {
     try {
       setIsLoading(true);
+      
+      // Check if user is authenticated
+      const { data: session } = await supabase.auth.getSession();
+      if (!session.session) {
+        toast({
+          title: "Authentication Required",
+          description: "Please log in to chat with the seller",
+          variant: "destructive",
+        });
+        navigate("/auth");
+        return;
+      }
+      
+      // Don't allow sellers to chat with themselves
+      if (session.session.user.id === sellerId) {
+        toast({
+          title: "Cannot Chat",
+          description: "You cannot chat with yourself",
+        });
+        return;
+      }
+
+      // Start or open existing conversation
       const conversationId = await startConversation(sellerId, productId);
-      navigate(`/chats?conversation=${conversationId}`);
+      
+      // Navigate to chat page with the conversation ID
+      navigate(`/chat?conversation=${conversationId}`);
     } catch (error) {
-      console.error("Error starting conversation:", error);
+      console.error("Error starting chat:", error);
       toast({
         title: "Error",
-        description: "Could not start the conversation. Please try again later.",
+        description: "Failed to start chat. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -56,14 +62,20 @@ const ChatButton = ({
 
   return (
     <Button 
-      onClick={handleChat} 
-      variant={variant} 
-      className={`flex items-center ${className}`}
+      variant="outline" 
+      size="sm" 
+      className={className}
+      onClick={handleChatClick}
       disabled={isLoading}
-      size={isMobile ? "sm" : "default"}
     >
-      <MessageSquare className="mr-2 h-4 w-4" />
-      {isLoading ? "Connecting..." : isMobile ? "Chat" : "Chat with Seller"}
+      {isLoading ? (
+        <span>Loading...</span>
+      ) : (
+        <>
+          <MessageCircle className="h-4 w-4 mr-1" />
+          Chat with Seller
+        </>
+      )}
     </Button>
   );
 };

@@ -79,41 +79,6 @@
   }
 }
 
-/* Layout Utilities */
-@layer components {
-  .container-layout {
-    @apply container mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl;
-  }
-  
-  .section-padding {
-    @apply py-6 md:py-10 lg:py-16;
-  }
-  
-  .page-container {
-    @apply min-h-screen bg-gray-50;
-  }
-  
-  .flex-center {
-    @apply flex items-center justify-center;
-  }
-  
-  .grid-responsive {
-    @apply grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6;
-  }
-  
-  .text-responsive {
-    @apply text-sm sm:text-base;
-  }
-  
-  .heading-responsive {
-    @apply text-2xl sm:text-3xl md:text-4xl font-bold;
-  }
-  
-  .subheading-responsive {
-    @apply text-lg sm:text-xl md:text-2xl font-semibold;
-  }
-}
-
 /* Custom Animations */
 .hover-scale {
   @apply transition-transform duration-300 hover:scale-105;
@@ -143,15 +108,4 @@ html {
 
 ::-webkit-scrollbar-thumb:hover {
   @apply bg-market-600;
-}
-
-/* Mobile Optimizations */
-@media (max-width: 640px) {
-  .container-layout {
-    @apply px-3;
-  }
-  
-  .section-padding {
-    @apply py-4;
-  }
 }

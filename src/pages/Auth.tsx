@@ -1,17 +1,18 @@
 
 import Navigation from "@/components/Navigation";
 import AuthForm from "@/components/AuthForm";
+import { CartProvider } from "@/contexts/CartContext";
 
 const Auth = () => {
   return (
-    <div className="page-container">
-      <Navigation />
-      <div className="container-layout section-padding">
-        <div className="max-w-md mx-auto">
+    <CartProvider>
+      <div className="min-h-screen bg-gray-50">
+        <Navigation />
+        <div className="container mx-auto px-4 py-16">
           <AuthForm />
         </div>
       </div>
-    </div>
+    </CartProvider>
   );
 };
 

@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { useCart } from "@/contexts/cart";
+import { useCart } from "@/contexts/CartContext";
 import { CartSheet } from "@/components/CartSheet";
 import {
   Home,
@@ -97,7 +97,7 @@ const NavBar = () => {
     <div className="bg-white border-b shadow-sm sticky top-0 z-50">
       <div className="container mx-auto px-4 h-16 flex items-center justify-between">
         <Link to="/" className="font-bold text-xl text-gray-800">
-          EcoVira
+          AgriChain
         </Link>
 
         <div className="hidden md:flex items-center space-x-4">

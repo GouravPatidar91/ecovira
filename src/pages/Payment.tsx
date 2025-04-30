@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import Navigation from "@/components/Navigation";
@@ -5,6 +6,7 @@ import PaymentForm from "@/components/PaymentForm";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2 } from "lucide-react";
+import { CartProvider } from "@/contexts/CartContext";
 
 const Payment = () => {
   const navigate = useNavigate();
@@ -15,6 +17,7 @@ const Payment = () => {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    // Get order information from URL params
     const urlParams = new URLSearchParams(location.search);
     const id = urlParams.get("orderId");
     const total = urlParams.get("amount");
@@ -36,6 +39,7 @@ const Payment = () => {
 
   const handlePaymentComplete = async (paymentId: string) => {
     try {
+      // Update order with payment details
       const { error } = await supabase
         .from('orders')
         .update({ 
@@ -51,6 +55,7 @@ const Payment = () => {
         description: "Your order has been placed successfully",
       });
       
+      // Navigate to order confirmation page
       setTimeout(() => {
         navigate("/dashboard/orders");
       }, 1000);
@@ -70,29 +75,33 @@ const Payment = () => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50">
-        <Navigation />
-        <div className="flex items-center justify-center h-[80vh]">
-          <Loader2 className="h-8 w-8 animate-spin text-market-600" />
+      <CartProvider>
+        <div className="min-h-screen bg-gray-50">
+          <Navigation />
+          <div className="flex items-center justify-center h-[80vh]">
+            <Loader2 className="h-8 w-8 animate-spin text-market-600" />
+          </div>
         </div>
-      </div>
+      </CartProvider>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Navigation />
-      <div className="container mx-auto px-4 py-16">
-        <div className="max-w-2xl mx-auto">
-          <h1 className="text-3xl font-bold text-center mb-8">Complete Your Payment</h1>
-          <PaymentForm 
-            amount={amount} 
-            onPaymentComplete={handlePaymentComplete}
-            onCancel={handleCancel}
-          />
+    <CartProvider>
+      <div className="min-h-screen bg-gray-50">
+        <Navigation />
+        <div className="container mx-auto px-4 py-16">
+          <div className="max-w-2xl mx-auto">
+            <h1 className="text-3xl font-bold text-center mb-8">Complete Your Payment</h1>
+            <PaymentForm 
+              amount={amount} 
+              onPaymentComplete={handlePaymentComplete}
+              onCancel={handleCancel}
+            />
+          </div>
         </div>
       </div>
-    </div>
+    </CartProvider>
   );
 };
 

@@ -10,7 +10,6 @@ import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, Send, Loader2, AlertCircle, RefreshCw, Check } from "lucide-react";
 import { format } from "date-fns";
 import { CartProvider } from "@/contexts/CartContext";
-import { useIsMobile } from "@/hooks/use-mobile";
 
 const Chat = () => {
   const location = useLocation();
@@ -22,7 +21,6 @@ const Chat = () => {
   const [isLocalLoading, setIsLocalLoading] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const isMobile = useIsMobile();
   
   const conversationId = new URLSearchParams(location.search).get("conversation");
   
@@ -91,10 +89,10 @@ const Chat = () => {
   
   return (
     <CartProvider>
-      <div className="page-container">
+      <div className="min-h-screen bg-gray-50">
         <Navigation />
         
-        <div className="container-layout section-padding">
+        <div className="container mx-auto pt-24 pb-16 px-4">
           <div className="max-w-3xl mx-auto bg-white rounded-lg shadow-md overflow-hidden">
             <div className="bg-market-500 text-white p-4 flex items-center">
               <Button 
@@ -117,7 +115,7 @@ const Chat = () => {
               </div>
             </div>
             
-            <div className={`${isMobile ? 'h-[calc(100vh-280px)]' : 'h-[calc(100vh-320px)]'} overflow-y-auto p-4 bg-gray-50`}>
+            <div className="h-[calc(100vh-320px)] overflow-y-auto p-4 bg-gray-50">
               {state.isLoading ? (
                 <div className="flex justify-center items-center h-full">
                   <Loader2 className="h-6 w-6 animate-spin text-market-500" />

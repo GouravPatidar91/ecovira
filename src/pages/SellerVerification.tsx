@@ -1,256 +1,180 @@
 
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { useAuth } from "@/contexts/AuthContext";
-import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
 import Navigation from "@/components/Navigation";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Upload } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { useNavigate } from "react-router-dom";
+import { useState } from "react";
+import { CartProvider } from "@/contexts/CartContext";
 
 const SellerVerification = () => {
-  const { user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isUploading, setIsUploading] = useState(false);
-  const [documentFile, setDocumentFile] = useState<File | null>(null);
-  const [documentPreview, setDocumentPreview] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     businessName: "",
     location: "",
-    bio: ""
+    bio: "",
+    document: null as File | null,
   });
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
-      setDocumentFile(file);
-
-      // Create preview for PDF or image
-      if (file.type.startsWith('image/')) {
-        const reader = new FileReader();
-        reader.onload = (event) => {
-          setDocumentPreview(event.target?.result as string);
-        };
-        reader.readAsDataURL(file);
-      } else if (file.type === 'application/pdf') {
-        // For PDFs we can't show a preview easily, so just show the filename
-        setDocumentPreview('PDF Document: ' + file.name);
-      } else {
-        toast({
-          title: "Invalid file type",
-          description: "Please upload an image or PDF document",
-          variant: "destructive"
-        });
-        setDocumentFile(null);
-        setDocumentPreview(null);
-      }
-    }
-  };
-
-  const uploadDocument = async (): Promise<string | null> => {
-    if (!documentFile || !user) return null;
-    
-    setIsUploading(true);
-    try {
-      const fileExt = documentFile.name.split('.').pop();
-      const filePath = `${user.id}-verification-doc.${fileExt}`;
-      
-      const { error: uploadError } = await supabase.storage
-        .from('verification-documents')
-        .upload(filePath, documentFile, { upsert: true });
-      
-      if (uploadError) throw uploadError;
-      
-      // Get the public URL
-      const { data } = supabase.storage
-        .from('verification-documents')
-        .getPublicUrl(filePath);
-      
-      return data.publicUrl;
-    } catch (error) {
-      console.error("Error uploading document:", error);
-      toast({
-        title: "Upload failed",
-        description: "There was an error uploading your verification document",
-        variant: "destructive"
-      });
-      return null;
-    } finally {
-      setIsUploading(false);
+      console.log('Selected file:', file.name, 'Size:', file.size, 'Type:', file.type);
+      setFormData(prev => ({ ...prev, document: file }));
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!user) {
-      toast({
-        title: "Authentication required",
-        description: "Please sign in to continue",
-        variant: "destructive"
-      });
-      navigate("/auth");
-      return;
-    }
+    setLoading(true);
 
-    if (!documentFile) {
-      toast({
-        title: "Document required",
-        description: "Please upload a verification document",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    setIsSubmitting(true);
-    
     try {
-      // First upload the document
-      const documentUrl = await uploadDocument();
-      
-      if (!documentUrl) {
-        throw new Error("Failed to upload document");
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast({
+          title: "Authentication Required",
+          description: "Please sign in to continue.",
+          variant: "destructive",
+        });
+        navigate('/auth');
+        return;
       }
-      
-      // Then update the profile
-      const { error } = await supabase
+
+      let documentUrl = null;
+
+      if (formData.document) {
+        console.log('Starting document upload...');
+        const fileExt = formData.document.name.split('.').pop();
+        const fileName = `${session.user.id}-${Date.now()}.${fileExt}`;
+
+        console.log('Uploading file:', fileName);
+        const { error: uploadError, data: uploadData } = await supabase.storage
+          .from('documents')
+          .upload(fileName, formData.document, {
+            cacheControl: '3600',
+            upsert: true
+          });
+
+        if (uploadError) {
+          console.error('Upload error details:', uploadError);
+          throw new Error(`Failed to upload document: ${uploadError.message}`);
+        }
+
+        console.log('Upload successful:', uploadData);
+
+        const { data: { publicUrl } } = supabase.storage
+          .from('documents')
+          .getPublicUrl(fileName);
+
+        console.log('Generated public URL:', publicUrl);
+        documentUrl = publicUrl;
+      }
+
+      console.log('Updating profile with document URL:', documentUrl);
+      const { error: profileError } = await supabase
         .from('profiles')
         .update({
           business_name: formData.businessName,
           location: formData.location,
           bio: formData.bio,
-          role: 'farmer',
           verification_status: 'pending',
+          role: 'farmer',
           verification_document: documentUrl
         })
-        .eq('id', user.id);
-      
-      if (error) throw error;
-      
+        .eq('id', session.user.id);
+
+      if (profileError) {
+        console.error('Profile update error:', profileError);
+        throw new Error(`Failed to update profile: ${profileError.message}`);
+      }
+
       toast({
-        title: "Verification submitted",
-        description: "Your seller verification request has been submitted and is pending review."
+        title: "Verification Submitted",
+        description: "Your seller verification request has been submitted for review.",
       });
-      
-      navigate("/farmers");
+
+      navigate('/farmers');
     } catch (error) {
-      console.error("Error submitting verification:", error);
+      console.error('Error during verification:', error);
       toast({
-        title: "Submission failed",
-        description: "There was an error submitting your verification. Please try again.",
-        variant: "destructive"
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to submit verification request",
+        variant: "destructive",
       });
     } finally {
-      setIsSubmitting(false);
+      setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Navigation />
-      <div className="container mx-auto p-4 mt-8 max-w-2xl">
-        <Card>
-          <CardHeader>
-            <CardTitle>Seller Verification</CardTitle>
-            <CardDescription>
-              Provide your business information and submit a government ID to become a verified seller
-            </CardDescription>
-          </CardHeader>
-          <form onSubmit={handleSubmit}>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="businessName">Business Name</Label>
-                <Input
-                  id="businessName"
-                  name="businessName"
-                  placeholder="Your farm or business name"
-                  value={formData.businessName}
-                  onChange={handleChange}
-                  required
-                />
-              </div>
+    <CartProvider>
+      <div className="min-h-screen bg-gray-50">
+        <Navigation />
+        
+        <div className="pt-24 pb-12">
+          <div className="container mx-auto max-w-2xl px-4">
+            <div className="bg-white rounded-lg shadow-sm p-6">
+              <h1 className="text-2xl font-semibold mb-6">Seller Verification</h1>
               
-              <div className="space-y-2">
-                <Label htmlFor="location">Location</Label>
-                <Input
-                  id="location"
-                  name="location"
-                  placeholder="Your business location"
-                  value={formData.location}
-                  onChange={handleChange}
-                  required
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="bio">About Your Business</Label>
-                <Textarea
-                  id="bio"
-                  name="bio"
-                  placeholder="Tell us about your farm and products"
-                  value={formData.bio}
-                  onChange={handleChange}
-                  rows={4}
-                  required
-                />
-              </div>
+              <form onSubmit={handleSubmit} className="space-y-6">
+                <div className="space-y-2">
+                  <Label htmlFor="businessName">Business Name</Label>
+                  <Input
+                    id="businessName"
+                    value={formData.businessName}
+                    onChange={(e) => setFormData(prev => ({ ...prev, businessName: e.target.value }))}
+                    required
+                  />
+                </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="document">Verification Document</Label>
-                <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center">
+                <div className="space-y-2">
+                  <Label htmlFor="location">Location</Label>
+                  <Input
+                    id="location"
+                    value={formData.location}
+                    onChange={(e) => setFormData(prev => ({ ...prev, location: e.target.value }))}
+                    required
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="bio">Business Description</Label>
+                  <Textarea
+                    id="bio"
+                    value={formData.bio}
+                    onChange={(e) => setFormData(prev => ({ ...prev, bio: e.target.value }))}
+                    required
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="document">Verification Document</Label>
                   <Input
                     id="document"
                     type="file"
-                    className="hidden"
-                    accept="image/*,application/pdf"
                     onChange={handleFileChange}
+                    accept=".pdf,.jpg,.jpeg,.png"
+                    required
                   />
-                  <Label htmlFor="document" className="cursor-pointer block">
-                    {documentPreview ? (
-                      documentPreview.startsWith('PDF') ? (
-                        <div className="text-market-600">{documentPreview}</div>
-                      ) : (
-                        <img 
-                          src={documentPreview} 
-                          alt="Document preview" 
-                          className="mx-auto max-h-48 object-contain"
-                        />
-                      )
-                    ) : (
-                      <div className="space-y-2">
-                        <Upload className="mx-auto h-10 w-10 text-gray-400" />
-                        <p className="text-sm text-gray-500">
-                          Upload a government-issued ID or business license
-                        </p>
-                        <p className="text-xs text-gray-400">
-                          Accepted formats: JPG, PNG, PDF (max 5MB)
-                        </p>
-                      </div>
-                    )}
-                  </Label>
+                  <p className="text-sm text-gray-500">
+                    Please upload a business license or any other relevant documentation (PDF, JPG, or PNG)
+                  </p>
                 </div>
-              </div>
-            </CardContent>
-            <CardFooter>
-              <Button type="submit" disabled={isSubmitting || isUploading} className="w-full">
-                {isSubmitting ? "Submitting..." : "Submit for Verification"}
-              </Button>
-            </CardFooter>
-          </form>
-        </Card>
+
+                <Button type="submit" disabled={loading} className="w-full">
+                  {loading ? "Submitting..." : "Submit for Verification"}
+                </Button>
+              </form>
+            </div>
+          </div>
+        </div>
       </div>
-    </div>
+    </CartProvider>
   );
 };
 

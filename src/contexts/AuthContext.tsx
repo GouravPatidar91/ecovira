@@ -19,30 +19,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Store loading state in session storage to persist across page refreshes
-    const storedLoadingState = sessionStorage.getItem('authLoading');
-    if (storedLoadingState === 'false') {
-      setLoading(false);
-    }
-
     const checkUser = async () => {
       try {
-        console.log("Checking auth session");
         setLoading(true);
         const { data } = await supabase.auth.getSession();
         
         if (data.session) {
-          console.log("Session found:", data.session.user.id);
           setSession(data.session);
           setUser(data.session.user);
-        } else {
-          console.log("No session found");
         }
       } catch (error) {
         console.error("Error checking auth:", error);
       } finally {
         setLoading(false);
-        sessionStorage.setItem('authLoading', 'false');
       }
     };
 
@@ -53,17 +42,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         console.log("Auth state changed:", event);
         
         if (session) {
-          console.log("New session user:", session.user.id);
           setSession(session);
           setUser(session.user);
         } else {
-          console.log("No session after auth state change");
           setSession(null);
           setUser(null);
         }
         
         setLoading(false);
-        sessionStorage.setItem('authLoading', 'false');
       }
     );
 
@@ -74,11 +60,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signOut = async () => {
     try {
-      console.log("Signing out");
       await supabase.auth.signOut();
       setUser(null);
       setSession(null);
-      sessionStorage.removeItem('authLoading');
     } catch (error) {
       console.error("Error signing out:", error);
       throw error;
