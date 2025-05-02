@@ -20,6 +20,7 @@ import AdminVerification from "@/pages/dashboard/AdminVerification";
 import SellerVerification from "@/pages/SellerVerification";
 import Inventory from "@/pages/dashboard/Inventory";
 import AdminRoute from "@/components/AdminRoute";
+import FarmerRoute from "@/components/FarmerRoute";
 import ChatList from "@/pages/ChatList";
 import Chat from "@/pages/Chat";
 
@@ -45,11 +46,17 @@ function App() {
 
                 <Route path="/seller-verification" element={<SellerVerification />} />
 
-                {/* Fix: Use nested routes pattern with Outlet to properly provide children */}
-                <Route path="/dashboard" element={<DashboardLayout><Outlet /></DashboardLayout>}>
+                {/* Protected routes for verified farmers only */}
+                <Route path="/dashboard" element={
+                  <FarmerRoute>
+                    <DashboardLayout>
+                      <Outlet />
+                    </DashboardLayout>
+                  </FarmerRoute>
+                }>
                   <Route path="products" element={<Products />} />
                   <Route path="products/new" element={<ProductForm />} />
-                  <Route path="products/edit/:id" element={<ProductForm />} />
+                  <Route path="products/:id" element={<ProductForm />} />
                   <Route path="orders" element={<Orders />} />
                   <Route path="inventory" element={<Inventory />} />
                   <Route

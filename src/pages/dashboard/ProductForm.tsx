@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
 import ProductDetails from "@/components/dashboard/product/ProductDetails";
 import ImageUpload from "@/components/dashboard/product/ImageUpload";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface ProductFormData {
   name: string;
@@ -23,6 +24,7 @@ const ProductForm = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { user } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState<ProductFormData>({
     name: "",
@@ -49,6 +51,18 @@ const ProductForm = () => {
         .single();
 
       if (error) throw error;
+      
+      // Check if the product belongs to the current user
+      if (data.seller_id !== user?.id) {
+        toast({
+          title: "Access Denied",
+          description: "You don't have permission to edit this product",
+          variant: "destructive",
+        });
+        navigate('/dashboard/products');
+        return;
+      }
+      
       setFormData(data);
     } catch (error) {
       toast({
@@ -79,6 +93,7 @@ const ProductForm = () => {
             .from('products')
             .update(productData)
             .eq('id', id)
+            .eq('seller_id', session.user.id)  // Make sure user can only update their own products
         : await supabase
             .from('products')
             .insert([productData]);
