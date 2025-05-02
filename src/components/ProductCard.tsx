@@ -1,7 +1,7 @@
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
-import { Leaf } from "lucide-react";
+import { Leaf, Package } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
 import ChatButton from "@/components/ChatButton";
 
@@ -48,6 +48,12 @@ const ProductCard = ({
             Organic
           </div>
         )}
+        
+        {/* Stock indicator */}
+        <div className="absolute top-2 left-2 bg-white/90 text-gray-800 px-2 py-1 rounded-full text-xs font-medium flex items-center">
+          <Package className="w-3 h-3 mr-1" />
+          {quantity_available > 0 ? `${quantity_available} in stock` : "Out of stock"}
+        </div>
       </div>
       <CardHeader className="p-4">
         <div className="flex justify-between items-start">

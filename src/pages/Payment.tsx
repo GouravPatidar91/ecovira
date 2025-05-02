@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import Navigation from "@/components/Navigation";
@@ -87,6 +86,30 @@ const Payment = () => {
       if (error) {
         console.error('Error updating order:', error);
         throw error;
+      }
+
+      // Get order items to update product stock
+      const { data: orderItems, error: itemsError } = await supabase
+        .from('order_items')
+        .select('product_id, quantity')
+        .eq('order_id', orderId);
+
+      if (itemsError) {
+        console.error('Error fetching order items:', itemsError);
+        throw itemsError;
+      }
+
+      // Update product stock for each item
+      for (const item of orderItems || []) {
+        const { error: updateStockError } = await supabase.rpc('update_product_quantity', {
+          p_product_id: item.product_id,
+          p_quantity: item.quantity
+        });
+
+        if (updateStockError) {
+          console.error('Error updating product stock:', updateStockError, 'for product:', item.product_id);
+          // Continue with other items even if one fails
+        }
       }
 
       toast({
