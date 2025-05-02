@@ -159,13 +159,12 @@ const Payment = () => {
 
       // Update product stock for each item
       for (const item of orderItems || []) {
-        const { error: updateStockError } = await supabase.rpc(
-          'update_product_quantity',
-          {
-            p_product_id: item.product_id,
-            p_quantity: item.quantity
+        const { error: updateStockError } = await supabase.functions.invoke("update_product_quantity", {
+          body: {
+            product_id: item.product_id,
+            quantity: item.quantity
           }
-        );
+        });
 
         if (updateStockError) {
           console.error('Error updating product stock:', updateStockError, 'for product:', item.product_id);
@@ -183,9 +182,7 @@ const Payment = () => {
           transaction_id: txDetails.id,
           payment_method: `${txDetails.cardType} ending in ${txDetails.cardLast4}`,
           status: 'completed'
-        })
-        .select()
-        .maybeSingle();
+        });
 
       if (txError) {
         console.error('Error recording transaction:', txError);
