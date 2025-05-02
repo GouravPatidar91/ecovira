@@ -70,11 +70,23 @@ export function CartSheet() {
 
       if (orderError) {
         console.error('Order creation error:', orderError);
-        throw new Error('Failed to create order');
+        toast({
+          title: "Order Creation Failed",
+          description: "Could not create your order. Please try again.",
+          variant: "destructive",
+        });
+        setIsProcessing(false);
+        return;
       }
 
       if (!orderData || !orderData.id) {
-        throw new Error('Order data is missing');
+        toast({
+          title: "Order Data Missing",
+          description: "Could not process your order. Please try again.",
+          variant: "destructive",
+        });
+        setIsProcessing(false);
+        return;
       }
 
       // Create order items
@@ -92,25 +104,35 @@ export function CartSheet() {
 
       if (itemsError) {
         console.error('Order items error:', itemsError);
-        throw new Error('Failed to create order items');
+        
+        // Clean up the order since the items couldn't be added
+        await supabase.from('orders').delete().eq('id', orderData.id);
+        
+        toast({
+          title: "Order Items Failed",
+          description: "Could not add items to your order. Please try again.",
+          variant: "destructive",
+        });
+        setIsProcessing(false);
+        return;
       }
 
+      // Close the checkout dialog
       setIsCheckoutDialogOpen(false);
       
       // Clear cart after successful order
       await clearCart();
       
-      // Redirect to payment page
+      // Redirect to payment page with order details
       navigate(`/payment?orderId=${orderData.id}&amount=${totalAmount}`);
       
     } catch (error) {
       console.error('Error during checkout:', error);
       toast({
-        title: "Error",
+        title: "Checkout Error",
         description: "Failed to process your order. Please try again.",
         variant: "destructive",
       });
-    } finally {
       setIsProcessing(false);
     }
   };
@@ -213,6 +235,7 @@ export function CartSheet() {
               <Button 
                 className="w-full mt-4"
                 onClick={() => setIsCheckoutDialogOpen(true)}
+                disabled={items.length === 0}
               >
                 Proceed to Checkout
               </Button>
@@ -247,7 +270,7 @@ export function CartSheet() {
           </div>
 
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={isProcessing}>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleCheckout}
               disabled={isProcessing || !shippingAddress.trim()}
