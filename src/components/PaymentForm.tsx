@@ -4,11 +4,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2, CreditCard, Check } from "lucide-react";
+import { Loader2, CreditCard, Check, AlertCircle } from "lucide-react";
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 
 interface PaymentFormProps {
   amount: number;
-  onPaymentComplete: (paymentId: string) => void;
+  onPaymentComplete: (paymentId: string, transactionDetails: any) => void;
   onCancel: () => void;
 }
 
@@ -19,29 +20,95 @@ const PaymentForm = ({ amount, onPaymentComplete, onCancel }: PaymentFormProps) 
   const [cardholderName, setCardholderName] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
   const [isComplete, setIsComplete] = useState(false);
+  const [isConfirming, setIsConfirming] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [transactionId, setTransactionId] = useState<string>("");
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const validateForm = () => {
+    if (!cardholderName.trim()) {
+      setError("Cardholder name is required");
+      return false;
+    }
+    
+    if (cardNumber.replace(/\s/g, "").length !== 16) {
+      setError("Invalid card number (must be 16 digits)");
+      return false;
+    }
+    
+    if (!expiryDate.match(/^\d{2}\/\d{2}$/)) {
+      setError("Invalid expiry date (format: MM/YY)");
+      return false;
+    }
+    
+    if (cvv.length !== 3) {
+      setError("Invalid CVV (must be 3 digits)");
+      return false;
+    }
+    
+    setError(null);
+    return true;
+  };
+
+  const handleInitialSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!cardNumber || !expiryDate || !cvv || !cardholderName) {
+    if (!validateForm()) {
       return;
     }
-
-    setIsProcessing(true);
     
-    // Simulate payment processing
+    // Generate a transaction ID
+    const txId = `tx_${Math.random().toString(36).substring(2, 15)}`;
+    setTransactionId(txId);
+    setIsConfirming(true);
+  };
+
+  const handleConfirmPayment = () => {
+    setIsProcessing(true);
+    setError(null);
+    
+    // Simulate payment processing with a mock API call
     setTimeout(() => {
-      setIsProcessing(false);
-      setIsComplete(true);
+      // Simulate success (95% of the time) or failure
+      const isSuccess = Math.random() > 0.05;
       
-      // Generate a fake payment ID
-      const paymentId = `pay_${Math.random().toString(36).substring(2, 15)}`;
-      
-      // Notify parent component about successful payment
-      setTimeout(() => {
-        onPaymentComplete(paymentId);
-      }, 1500);
+      if (isSuccess) {
+        setIsProcessing(false);
+        setIsComplete(true);
+        
+        // Generate a fake payment ID and transaction details
+        const paymentId = `pay_${Math.random().toString(36).substring(2, 15)}`;
+        const transactionDetails = {
+          id: transactionId,
+          timestamp: new Date().toISOString(),
+          cardLast4: cardNumber.replace(/\s/g, "").slice(-4),
+          cardType: getCardType(cardNumber),
+          amount: amount
+        };
+        
+        // Notify parent component about successful payment
+        setTimeout(() => {
+          onPaymentComplete(paymentId, transactionDetails);
+        }, 1500);
+      } else {
+        setIsProcessing(false);
+        setError("Payment was declined. Please try a different payment method.");
+        setIsConfirming(false);
+      }
     }, 2000);
+  };
+
+  const getCardType = (number: string) => {
+    // Simple card type detection
+    const firstDigit = number.replace(/\s/g, "").charAt(0);
+    if (firstDigit === "4") return "Visa";
+    if (firstDigit === "5") return "MasterCard";
+    if (firstDigit === "3") return "American Express";
+    if (firstDigit === "6") return "Discover";
+    return "Unknown";
+  };
+
+  const handleBackToEdit = () => {
+    setIsConfirming(false);
   };
 
   return (
@@ -50,6 +117,17 @@ const PaymentForm = ({ amount, onPaymentComplete, onCancel }: PaymentFormProps) 
         <CardTitle>Payment Details</CardTitle>
         <CardDescription>Enter your card information to complete the purchase</CardDescription>
       </CardHeader>
+      
+      {error && (
+        <CardContent className="pt-0">
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Error</AlertTitle>
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        </CardContent>
+      )}
+      
       {isComplete ? (
         <CardContent className="text-center py-8">
           <div className="mx-auto w-12 h-12 rounded-full bg-green-100 flex items-center justify-center mb-4">
@@ -57,9 +135,48 @@ const PaymentForm = ({ amount, onPaymentComplete, onCancel }: PaymentFormProps) 
           </div>
           <h3 className="text-lg font-medium text-gray-900 mb-1">Payment Successful</h3>
           <p className="text-gray-500">Your payment has been processed successfully</p>
+          <div className="mt-4 bg-gray-50 p-3 rounded-md text-sm">
+            <p className="text-gray-700">Transaction ID: {transactionId}</p>
+            <p className="text-gray-700">Amount: ${amount.toFixed(2)}</p>
+          </div>
+        </CardContent>
+      ) : isConfirming ? (
+        <CardContent className="space-y-6">
+          <div className="border rounded-md p-4">
+            <h3 className="font-medium mb-2">Please confirm your payment</h3>
+            <p className="text-sm text-gray-600 mb-2">You are about to make a payment of <span className="font-bold">${amount.toFixed(2)}</span></p>
+            <div className="space-y-1 text-sm">
+              <p><span className="text-gray-500">Card number:</span> •••• •••• •••• {cardNumber.slice(-4)}</p>
+              <p><span className="text-gray-500">Cardholder:</span> {cardholderName}</p>
+              <p><span className="text-gray-500">Card type:</span> {getCardType(cardNumber)}</p>
+              <p><span className="text-gray-500">Transaction ID:</span> {transactionId}</p>
+            </div>
+          </div>
+          <div className="flex flex-col space-y-2">
+            <Button 
+              onClick={handleConfirmPayment} 
+              disabled={isProcessing}
+            >
+              {isProcessing ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Processing payment...
+                </>
+              ) : (
+                `Confirm Payment of $${amount.toFixed(2)}`
+              )}
+            </Button>
+            <Button 
+              variant="outline" 
+              onClick={handleBackToEdit}
+              disabled={isProcessing}
+            >
+              Back to Edit
+            </Button>
+          </div>
         </CardContent>
       ) : (
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleInitialSubmit}>
           <CardContent className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="cardholder-name">Cardholder Name</Label>
@@ -142,14 +259,7 @@ const PaymentForm = ({ amount, onPaymentComplete, onCancel }: PaymentFormProps) 
               type="submit"
               disabled={isProcessing}
             >
-              {isProcessing ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Processing...
-                </>
-              ) : (
-                `Pay $${amount.toFixed(2)}`
-              )}
+              Review Payment
             </Button>
             
             <Button 

@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import Navigation from "@/components/Navigation";
@@ -6,6 +7,29 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2 } from "lucide-react";
 import { CartProvider } from "@/contexts/CartContext";
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
+import { Card } from "@/components/ui/card";
+import { Check } from "lucide-react";
+
+interface OrderSummary {
+  id: string;
+  total_amount: number;
+  shipping_address: string;
+  created_at: string;
+  items: Array<{
+    product_name: string;
+    quantity: number;
+    unit_price: number;
+  }>;
+}
+
+interface TransactionDetails {
+  id: string;
+  timestamp: string;
+  cardLast4: string;
+  cardType: string;
+  amount: number;
+}
 
 const Payment = () => {
   const navigate = useNavigate();
@@ -15,6 +39,9 @@ const Payment = () => {
   const [amount, setAmount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [orderExists, setOrderExists] = useState(false);
+  const [orderSummary, setOrderSummary] = useState<OrderSummary | null>(null);
+  const [paymentComplete, setPaymentComplete] = useState(false);
+  const [transactionDetails, setTransactionDetails] = useState<TransactionDetails | null>(null);
 
   useEffect(() => {
     // Get order information from URL params and validate order
@@ -31,7 +58,7 @@ const Payment = () => {
         // Validate that the order exists in the database
         const { data: order, error } = await supabase
           .from('orders')
-          .select('id, total_amount, payment_status')
+          .select('id, total_amount, payment_status, shipping_address, created_at')
           .eq('id', id)
           .single();
         
@@ -49,9 +76,38 @@ const Payment = () => {
           return;
         }
         
+        // Fetch order items for the summary
+        const { data: orderItems, error: itemsError } = await supabase
+          .from('order_items')
+          .select(`
+            quantity, 
+            unit_price,
+            products (name)
+          `)
+          .eq('order_id', id);
+        
+        if (itemsError) {
+          console.error("Error fetching order items:", itemsError);
+          // Continue without items data
+        }
+        
+        // Create order summary
+        const summary: OrderSummary = {
+          id: order.id,
+          total_amount: order.total_amount,
+          shipping_address: order.shipping_address || 'Not provided',
+          created_at: new Date(order.created_at).toLocaleString(),
+          items: (orderItems || []).map(item => ({
+            product_name: item.products?.name || 'Unknown product',
+            quantity: item.quantity,
+            unit_price: item.unit_price
+          }))
+        };
+        
         setOrderId(id);
         setAmount(parseFloat(total));
         setOrderExists(true);
+        setOrderSummary(summary);
       } catch (error) {
         console.error("Error validating order:", error);
         toast({
@@ -68,8 +124,10 @@ const Payment = () => {
     fetchAndValidateOrder();
   }, [location, navigate, toast]);
 
-  const handlePaymentComplete = async (paymentId: string) => {
+  const handlePaymentComplete = async (paymentId: string, txDetails: TransactionDetails) => {
     try {
+      setTransactionDetails(txDetails);
+      
       if (!orderId) {
         throw new Error('Order ID is missing');
       }
@@ -101,10 +159,13 @@ const Payment = () => {
 
       // Update product stock for each item
       for (const item of orderItems || []) {
-        const { error: updateStockError } = await supabase.rpc('update_product_quantity', {
-          p_product_id: item.product_id,
-          p_quantity: item.quantity
-        });
+        const { error: updateStockError } = await supabase.rpc(
+          'update_product_quantity',
+          {
+            p_product_id: item.product_id,
+            p_quantity: item.quantity
+          }
+        );
 
         if (updateStockError) {
           console.error('Error updating product stock:', updateStockError, 'for product:', item.product_id);
@@ -112,15 +173,36 @@ const Payment = () => {
         }
       }
 
+      // Record the payment transaction
+      const { error: txError } = await supabase
+        .from('payment_transactions')
+        .insert({
+          order_id: orderId,
+          payment_id: paymentId,
+          amount: amount,
+          transaction_id: txDetails.id,
+          payment_method: `${txDetails.cardType} ending in ${txDetails.cardLast4}`,
+          status: 'completed'
+        })
+        .select()
+        .maybeSingle();
+
+      if (txError) {
+        console.error('Error recording transaction:', txError);
+        // Continue even if transaction recording fails
+      }
+
+      setPaymentComplete(true);
+      
       toast({
         title: "Payment Successful",
         description: "Your order has been placed successfully",
       });
       
-      // Navigate to order confirmation page
+      // Navigate to order confirmation page after a delay
       setTimeout(() => {
         navigate("/market");
-      }, 1000);
+      }, 5000);
     } catch (error) {
       console.error('Error updating order:', error);
       toast({
@@ -175,13 +257,92 @@ const Payment = () => {
       <div className="min-h-screen bg-gray-50">
         <Navigation />
         <div className="container mx-auto px-4 py-16">
-          <div className="max-w-2xl mx-auto">
+          <div className="max-w-4xl mx-auto">
             <h1 className="text-3xl font-bold text-center mb-8">Complete Your Payment</h1>
-            <PaymentForm 
-              amount={amount} 
-              onPaymentComplete={handlePaymentComplete}
-              onCancel={handleCancel}
-            />
+            
+            {paymentComplete ? (
+              <div className="bg-white rounded-lg shadow p-6 mb-8">
+                <div className="text-center mb-6">
+                  <div className="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
+                    <Check className="h-8 w-8 text-green-600" />
+                  </div>
+                  <h2 className="text-2xl font-bold mb-2">Payment Successful!</h2>
+                  <p className="text-gray-600 mb-4">Thank you for your order. Your payment has been processed successfully.</p>
+                  <p className="text-sm text-gray-500">You will be redirected to the market page in a few seconds.</p>
+                </div>
+                
+                {transactionDetails && (
+                  <div className="border-t pt-4 mt-4">
+                    <h3 className="font-semibold mb-3">Transaction Details</h3>
+                    <div className="grid grid-cols-2 gap-2 text-sm">
+                      <p className="text-gray-500">Transaction ID:</p>
+                      <p>{transactionDetails.id}</p>
+                      <p className="text-gray-500">Date:</p>
+                      <p>{new Date(transactionDetails.timestamp).toLocaleString()}</p>
+                      <p className="text-gray-500">Payment Method:</p>
+                      <p>{transactionDetails.cardType} ending in {transactionDetails.cardLast4}</p>
+                      <p className="text-gray-500">Amount:</p>
+                      <p>${transactionDetails.amount.toFixed(2)}</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <div className="md:col-span-2">
+                  <PaymentForm 
+                    amount={amount} 
+                    onPaymentComplete={handlePaymentComplete}
+                    onCancel={handleCancel}
+                  />
+                </div>
+                
+                <div className="md:col-span-1">
+                  {orderSummary && (
+                    <Card className="p-4">
+                      <h3 className="font-bold text-lg mb-4">Order Summary</h3>
+                      <div className="space-y-4">
+                        <div>
+                          <p className="text-sm text-gray-500">Order ID</p>
+                          <p className="font-medium">{orderSummary.id.slice(0, 8)}...</p>
+                        </div>
+                        
+                        <div>
+                          <p className="text-sm text-gray-500">Shipping Address</p>
+                          <p className="font-medium">{orderSummary.shipping_address}</p>
+                        </div>
+                        
+                        <div>
+                          <p className="text-sm text-gray-500 mb-2">Items</p>
+                          <div className="space-y-2">
+                            {orderSummary.items.map((item, idx) => (
+                              <div key={idx} className="flex justify-between text-sm">
+                                <span>{item.product_name} x {item.quantity}</span>
+                                <span>${(item.unit_price * item.quantity).toFixed(2)}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                        
+                        <div className="border-t pt-3 mt-3">
+                          <div className="flex justify-between font-bold">
+                            <span>Total</span>
+                            <span>${orderSummary.total_amount.toFixed(2)}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </Card>
+                  )}
+                  
+                  <Alert className="mt-4 bg-blue-50 border-blue-200">
+                    <AlertTitle>Test Payment</AlertTitle>
+                    <AlertDescription>
+                      This is a mock payment system. No real payments will be processed.
+                    </AlertDescription>
+                  </Alert>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
