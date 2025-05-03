@@ -42,23 +42,41 @@ serve(async (req) => {
       );
     }
 
-    // Update product quantity directly in database
-    const { data, error } = await supabaseClient
+    // Call the SQL function to update quantity and get the current quantity
+    const { data: productBefore } = await supabaseClient
       .from('products')
-      .update({ 
-        quantity_available: supabaseClient.rpc('decrement_quantity', { 
-          p_product_id: product_id, 
-          p_quantity: quantity 
-        })
-      })
-      .eq('id', product_id)
       .select('quantity_available')
+      .eq('id', product_id)
       .single();
-
-    if (error) {
-      console.error('Error updating product quantity:', error);
+      
+    // Execute the function to decrement the quantity
+    const { error: funcError } = await supabaseClient.rpc(
+      'decrement_quantity',
+      { p_product_id: product_id, p_quantity: quantity }
+    );
+    
+    if (funcError) {
+      console.error('Error executing decrement_quantity function:', funcError);
       return new Response(
-        JSON.stringify({ error: error.message }),
+        JSON.stringify({ error: funcError.message }),
+        {
+          status: 500,
+          headers: { 'Content-Type': 'application/json', ...corsHeaders }
+        }
+      );
+    }
+    
+    // Get the updated quantity after decrement
+    const { data: productAfter, error: fetchError } = await supabaseClient
+      .from('products')
+      .select('quantity_available')
+      .eq('id', product_id)
+      .single();
+      
+    if (fetchError) {
+      console.error('Error fetching updated product quantity:', fetchError);
+      return new Response(
+        JSON.stringify({ error: fetchError.message }),
         {
           status: 500,
           headers: { 'Content-Type': 'application/json', ...corsHeaders }
@@ -67,7 +85,13 @@ serve(async (req) => {
     }
 
     return new Response(
-      JSON.stringify({ success: true, data }),
+      JSON.stringify({ 
+        success: true, 
+        data: {
+          previous_quantity: productBefore?.quantity_available,
+          current_quantity: productAfter?.quantity_available
+        }
+      }),
       { 
         status: 200,
         headers: { 'Content-Type': 'application/json', ...corsHeaders }
