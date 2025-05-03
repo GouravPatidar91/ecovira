@@ -42,14 +42,18 @@ serve(async (req) => {
       );
     }
 
-    // Update product quantity
-    const { data, error } = await supabaseClient.rpc(
-      'update_product_quantity',
-      {
-        p_product_id: product_id,
-        p_quantity: quantity
-      }
-    );
+    // Update product quantity directly in database
+    const { data, error } = await supabaseClient
+      .from('products')
+      .update({ 
+        quantity_available: supabaseClient.rpc('decrement_quantity', { 
+          p_product_id: product_id, 
+          p_quantity: quantity 
+        })
+      })
+      .eq('id', product_id)
+      .select('quantity_available')
+      .single();
 
     if (error) {
       console.error('Error updating product quantity:', error);

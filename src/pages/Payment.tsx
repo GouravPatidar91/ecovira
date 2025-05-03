@@ -10,6 +10,7 @@ import { CartProvider } from "@/contexts/CartContext";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { Card } from "@/components/ui/card";
 import { Check } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 interface OrderSummary {
   id: string;
@@ -159,34 +160,43 @@ const Payment = () => {
 
       // Update product stock for each item
       for (const item of orderItems || []) {
-        const { error: updateStockError } = await supabase.functions.invoke("update_product_quantity", {
-          body: {
-            product_id: item.product_id,
-            quantity: item.quantity
-          }
-        });
+        try {
+          const { error: updateStockError } = await supabase.functions.invoke(
+            "update_product_quantity", 
+            {
+              body: {
+                product_id: item.product_id,
+                quantity: item.quantity
+              }
+            }
+          );
 
-        if (updateStockError) {
-          console.error('Error updating product stock:', updateStockError, 'for product:', item.product_id);
-          // Continue with other items even if one fails
+          if (updateStockError) {
+            console.error('Error updating product stock:', updateStockError, 'for product:', item.product_id);
+          }
+        } catch (error) {
+          console.error('Function invocation error:', error);
         }
       }
 
       // Record the payment transaction
-      const { error: txError } = await supabase
-        .from('payment_transactions')
-        .insert({
-          order_id: orderId,
-          payment_id: paymentId,
-          amount: amount,
-          transaction_id: txDetails.id,
-          payment_method: `${txDetails.cardType} ending in ${txDetails.cardLast4}`,
-          status: 'completed'
-        });
+      try {
+        const { error: txError } = await supabase
+          .from('payment_transactions')
+          .insert({
+            order_id: orderId,
+            payment_id: paymentId,
+            amount: amount,
+            transaction_id: txDetails.id,
+            payment_method: `${txDetails.cardType} ending in ${txDetails.cardLast4}`,
+            status: 'completed'
+          });
 
-      if (txError) {
-        console.error('Error recording transaction:', txError);
-        // Continue even if transaction recording fails
+        if (txError) {
+          console.error('Error recording transaction:', txError);
+        }
+      } catch (error) {
+        console.error('Transaction recording error:', error);
       }
 
       setPaymentComplete(true);
@@ -196,10 +206,7 @@ const Payment = () => {
         description: "Your order has been placed successfully",
       });
       
-      // Navigate to order confirmation page after a delay
-      setTimeout(() => {
-        navigate("/market");
-      }, 5000);
+      // We'll let the user choose when to navigate away instead of automatic redirection
     } catch (error) {
       console.error('Error updating order:', error);
       toast({
@@ -210,8 +217,12 @@ const Payment = () => {
     }
   };
 
-  const handleCancel = () => {
+  const handleNavigateToMarket = () => {
     navigate("/market");
+  };
+  
+  const handleNavigateToOrders = () => {
+    navigate("/dashboard/orders");
   };
 
   if (isLoading) {
@@ -236,12 +247,12 @@ const Payment = () => {
             <div className="max-w-2xl mx-auto text-center">
               <h1 className="text-3xl font-bold mb-4">Order Not Found</h1>
               <p className="mb-6">We couldn't find the order you're looking for.</p>
-              <button 
+              <Button 
                 className="px-4 py-2 bg-market-600 text-white rounded hover:bg-market-700"
                 onClick={() => navigate("/market")}
               >
                 Return to Market
-              </button>
+              </Button>
             </div>
           </div>
         </div>
@@ -255,7 +266,9 @@ const Payment = () => {
         <Navigation />
         <div className="container mx-auto px-4 py-16">
           <div className="max-w-4xl mx-auto">
-            <h1 className="text-3xl font-bold text-center mb-8">Complete Your Payment</h1>
+            <h1 className="text-3xl font-bold text-center mb-8">
+              {paymentComplete ? "Payment Successful" : "Complete Your Payment"}
+            </h1>
             
             {paymentComplete ? (
               <div className="bg-white rounded-lg shadow p-6 mb-8">
@@ -265,11 +278,10 @@ const Payment = () => {
                   </div>
                   <h2 className="text-2xl font-bold mb-2">Payment Successful!</h2>
                   <p className="text-gray-600 mb-4">Thank you for your order. Your payment has been processed successfully.</p>
-                  <p className="text-sm text-gray-500">You will be redirected to the market page in a few seconds.</p>
                 </div>
                 
                 {transactionDetails && (
-                  <div className="border-t pt-4 mt-4">
+                  <div className="border-t pt-4 mt-4 mb-6">
                     <h3 className="font-semibold mb-3">Transaction Details</h3>
                     <div className="grid grid-cols-2 gap-2 text-sm">
                       <p className="text-gray-500">Transaction ID:</p>
@@ -280,9 +292,20 @@ const Payment = () => {
                       <p>{transactionDetails.cardType} ending in {transactionDetails.cardLast4}</p>
                       <p className="text-gray-500">Amount:</p>
                       <p>${transactionDetails.amount.toFixed(2)}</p>
+                      <p className="text-gray-500">Order ID:</p>
+                      <p>{orderId}</p>
                     </div>
                   </div>
                 )}
+                
+                <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                  <Button onClick={handleNavigateToMarket} variant="outline" className="flex-1">
+                    Continue Shopping
+                  </Button>
+                  <Button onClick={handleNavigateToOrders} className="flex-1">
+                    View My Orders
+                  </Button>
+                </div>
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -290,7 +313,7 @@ const Payment = () => {
                   <PaymentForm 
                     amount={amount} 
                     onPaymentComplete={handlePaymentComplete}
-                    onCancel={handleCancel}
+                    onCancel={handleNavigateToMarket}
                   />
                 </div>
                 

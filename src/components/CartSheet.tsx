@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
@@ -16,6 +15,7 @@ export function CartSheet() {
   const [isCheckoutDialogOpen, setIsCheckoutDialogOpen] = useState(false);
   const [shippingAddress, setShippingAddress] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
+  const [sheetOpen, setSheetOpen] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -117,11 +117,9 @@ export function CartSheet() {
         return;
       }
 
-      // Close the checkout dialog
+      // Close the checkout dialog and cart sheet
       setIsCheckoutDialogOpen(false);
-      
-      // Clear cart after successful order
-      await clearCart();
+      setSheetOpen(false);
       
       // Redirect to payment page with order details
       navigate(`/payment?orderId=${orderData.id}&amount=${totalAmount}`);
@@ -138,7 +136,7 @@ export function CartSheet() {
   };
 
   return (
-    <Sheet>
+    <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
       <SheetTrigger asChild>
         <Button variant="outline" size="icon" className="relative">
           <ShoppingCart className="h-4 w-4" />
