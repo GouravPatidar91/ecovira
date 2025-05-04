@@ -51,6 +51,7 @@ const OrderPaymentProcess = () => {
           .from('orders')
           .select(`
             id, 
+            buyer_id,
             total_amount, 
             shipping_address, 
             status,
