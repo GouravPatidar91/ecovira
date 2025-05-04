@@ -55,80 +55,18 @@ export function CartSheet() {
         return;
       }
 
-      // Create the order
-      const { data: orderData, error: orderError } = await supabase
-        .from('orders')
-        .insert({
-          buyer_id: session.user.id,
-          total_amount: totalAmount,
-          shipping_address: shippingAddress,
-          status: 'pending',
-          payment_status: 'pending'
-        })
-        .select()
-        .single();
-
-      if (orderError) {
-        console.error('Order creation error:', orderError);
-        toast({
-          title: "Order Creation Failed",
-          description: "Could not create your order. Please try again.",
-          variant: "destructive",
-        });
-        setIsProcessing(false);
-        return;
-      }
-
-      if (!orderData || !orderData.id) {
-        toast({
-          title: "Order Data Missing",
-          description: "Could not process your order. Please try again.",
-          variant: "destructive",
-        });
-        setIsProcessing(false);
-        return;
-      }
-
-      // Create order items
-      const orderItems = items.map(item => ({
-        order_id: orderData.id,
-        product_id: item.product_id,
-        quantity: item.quantity,
-        unit_price: item.price,
-        total_price: item.price * item.quantity
-      }));
-
-      const { error: itemsError } = await supabase
-        .from('order_items')
-        .insert(orderItems);
-
-      if (itemsError) {
-        console.error('Order items error:', itemsError);
-        
-        // Clean up the order since the items couldn't be added
-        await supabase.from('orders').delete().eq('id', orderData.id);
-        
-        toast({
-          title: "Order Items Failed",
-          description: "Could not add items to your order. Please try again.",
-          variant: "destructive",
-        });
-        setIsProcessing(false);
-        return;
-      }
-
       // Close the checkout dialog and cart sheet
       setIsCheckoutDialogOpen(false);
       setSheetOpen(false);
       
-      // Redirect to payment page with order details
-      navigate(`/payment?orderId=${orderData.id}`);
+      // Redirect to payment page with shipping address
+      navigate(`/payment?address=${encodeURIComponent(shippingAddress)}`);
       
     } catch (error) {
       console.error('Error during checkout:', error);
       toast({
         title: "Checkout Error",
-        description: "Failed to process your order. Please try again.",
+        description: "Failed to process your checkout. Please try again.",
         variant: "destructive",
       });
       setIsProcessing(false);
@@ -247,7 +185,7 @@ export function CartSheet() {
           <AlertDialogHeader>
             <AlertDialogTitle>Complete your order</AlertDialogTitle>
             <AlertDialogDescription>
-              Please provide your shipping address to complete the order.
+              Please provide your shipping address to continue to payment.
             </AlertDialogDescription>
           </AlertDialogHeader>
           
@@ -279,7 +217,7 @@ export function CartSheet() {
                   Processing
                 </>
               ) : (
-                'Confirm Order'
+                'Continue to Payment'
               )}
             </AlertDialogAction>
           </AlertDialogFooter>

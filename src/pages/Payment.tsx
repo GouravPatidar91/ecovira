@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import Navigation from "@/components/Navigation";
-import { CartProvider } from "@/contexts/CartContext";
+import { CartProvider, useCart } from "@/contexts/CartContext";
 import PaymentForm from "@/components/PaymentForm";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -12,105 +12,140 @@ const Payment = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
-  const [orderId, setOrderId] = useState<string | null>(null);
-  const [orderDetails, setOrderDetails] = useState<any>(null);
-  const [isLoading, setIsLoading] = useState(true);
-
+  const { state: { items }, clearCart } = useCart();
+  const [isLoading, setIsLoading] = useState(false);
+  const [shippingAddress, setShippingAddress] = useState("");
+  
   useEffect(() => {
-    const fetchOrderDetails = async () => {
-      const params = new URLSearchParams(location.search);
-      const id = params.get("orderId");
+    // Extract shipping address from URL parameter
+    const params = new URLSearchParams(location.search);
+    const address = params.get("address");
+    
+    if (!address) {
+      toast({
+        title: "Error",
+        description: "Shipping address is missing",
+        variant: "destructive",
+      });
+      navigate("/market");
+      return;
+    }
 
-      if (!id) {
+    setShippingAddress(address);
+    
+    // Check if cart is empty
+    if (items.length === 0) {
+      toast({
+        title: "Empty Cart",
+        description: "Your shopping cart is empty",
+        variant: "destructive",
+      });
+      navigate("/market");
+      return;
+    }
+  }, [location.search, navigate, toast, items]);
+
+  const calculateTotal = () => {
+    return items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+  };
+
+  const handlePaymentComplete = async (paymentId: string, transactionDetails: any) => {
+    try {
+      setIsLoading(true);
+      
+      // Get the session to check authentication
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
         toast({
-          title: "Error",
-          description: "Order ID is missing",
+          title: "Authentication required",
+          description: "Please log in to complete your order",
           variant: "destructive",
         });
-        navigate("/market");
+        navigate("/auth");
         return;
       }
 
-      setOrderId(id);
+      // Create the order
+      const { data: orderData, error: orderError } = await supabase
+        .from('orders')
+        .insert({
+          buyer_id: session.user.id,
+          total_amount: calculateTotal(),
+          shipping_address: shippingAddress,
+          status: 'processing',
+          payment_status: 'paid'
+        })
+        .select()
+        .single();
 
-      try {
-        // Get the session to check authentication
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session) {
-          toast({
-            title: "Authentication required",
-            description: "Please log in to complete your order",
-            variant: "destructive",
-          });
-          navigate("/auth");
-          return;
-        }
-
-        // Fetch order details
-        const { data: order, error } = await supabase
-          .from('orders')
-          .select(`
-            id,
-            buyer_id,
-            total_amount,
-            shipping_address,
-            status,
-            payment_status,
-            created_at,
-            order_items (
-              quantity,
-              unit_price,
-              product_id,
-              products (
-                name,
-                unit
-              )
-            )
-          `)
-          .eq('id', id)
-          .single();
-
-        if (error || !order) {
-          console.error('Error fetching order:', error);
-          toast({
-            title: "Error",
-            description: "Could not retrieve order details",
-            variant: "destructive",
-          });
-          navigate("/market");
-          return;
-        }
-
-        // Validate this order belongs to the current user
-        if (order.buyer_id !== session.user.id) {
-          toast({
-            title: "Unauthorized",
-            description: "You don't have access to this order",
-            variant: "destructive",
-          });
-          navigate("/market");
-          return;
-        }
-
-        setOrderDetails(order);
-      } catch (error) {
-        console.error("Error fetching order details:", error);
+      if (orderError) {
+        console.error('Order creation error:', orderError);
         toast({
-          title: "Error",
-          description: "An unexpected error occurred",
+          title: "Order Creation Failed",
+          description: "Could not create your order. Please try again.",
           variant: "destructive",
         });
-      } finally {
-        setIsLoading(false);
+        return;
       }
-    };
 
-    fetchOrderDetails();
-  }, [location.search, navigate, toast]);
+      // Create order items
+      const orderItems = items.map(item => ({
+        order_id: orderData.id,
+        product_id: item.product_id,
+        quantity: item.quantity,
+        unit_price: item.price,
+        total_price: item.price * item.quantity
+      }));
 
-  const handlePaymentComplete = (paymentId: string, transactionDetails: any) => {
-    // Navigate to order processing page with orderId
-    navigate(`/order-payment?orderId=${orderId}`);
+      const { error: itemsError } = await supabase
+        .from('order_items')
+        .insert(orderItems);
+
+      if (itemsError) {
+        console.error('Order items error:', itemsError);
+        
+        // Clean up the order since the items couldn't be added
+        await supabase.from('orders').delete().eq('id', orderData.id);
+        
+        toast({
+          title: "Order Items Failed",
+          description: "Could not add items to your order. Please try again.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Create payment transaction record
+      const { error: paymentError } = await supabase
+        .from('payment_transactions')
+        .insert({
+          order_id: orderData.id,
+          amount: calculateTotal(),
+          payment_id: paymentId,
+          transaction_id: transactionDetails.id,
+          payment_method: 'card',
+          metadata: transactionDetails
+        });
+
+      if (paymentError) {
+        console.error('Payment record error:', paymentError);
+      }
+
+      // Clear cart
+      await clearCart();
+      
+      // Navigate to order processing page with orderId
+      navigate(`/order-payment?orderId=${orderData.id}`);
+    } catch (error) {
+      console.error('Error during order creation:', error);
+      toast({
+        title: "Order Processing Error",
+        description: "Failed to process your order. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleCancel = () => {
@@ -130,24 +165,22 @@ const Payment = () => {
             <div className="flex justify-center items-center h-64">
               <Loader2 className="h-8 w-8 animate-spin text-market-600" />
             </div>
-          ) : orderDetails ? (
+          ) : (
             <div className="max-w-2xl mx-auto">
               <h1 className="text-2xl font-bold mb-8 text-center">Complete Your Payment</h1>
               <div className="mb-6 bg-white rounded-lg shadow p-4">
                 <h2 className="text-lg font-medium mb-2">Order Summary</h2>
                 <div className="space-y-2 text-sm">
-                  <p><span className="font-medium">Order ID:</span> {orderDetails.id}</p>
-                  <p><span className="font-medium">Date:</span> {new Date(orderDetails.created_at).toLocaleString()}</p>
-                  <p><span className="font-medium">Shipping Address:</span> {orderDetails.shipping_address}</p>
+                  <p><span className="font-medium">Shipping Address:</span> {shippingAddress}</p>
                   <div className="border-t border-gray-200 my-2 pt-2">
                     <p className="font-medium">Items:</p>
                     <ul className="mt-1 space-y-1">
-                      {orderDetails.order_items?.map((item: any, idx: number) => (
+                      {items.map((item, idx) => (
                         <li key={idx} className="flex justify-between">
                           <span>
-                            {item.products?.name || 'Product'} ({item.quantity} {item.quantity === 1 ? item.products?.unit || 'unit' : `${item.products?.unit || 'unit'}s`})
+                            {item.name} ({item.quantity} {item.quantity === 1 ? item.unit : `${item.unit}s`})
                           </span>
-                          <span>${(item.unit_price * item.quantity).toFixed(2)}</span>
+                          <span>${(item.price * item.quantity).toFixed(2)}</span>
                         </li>
                       ))}
                     </ul>
@@ -155,21 +188,17 @@ const Payment = () => {
                   <div className="border-t border-gray-200 my-2 pt-2">
                     <div className="flex justify-between font-medium">
                       <span>Total Amount:</span>
-                      <span>${orderDetails.total_amount?.toFixed(2)}</span>
+                      <span>${calculateTotal().toFixed(2)}</span>
                     </div>
                   </div>
                 </div>
               </div>
               
               <PaymentForm 
-                amount={orderDetails.total_amount}
+                amount={calculateTotal()}
                 onPaymentComplete={handlePaymentComplete}
                 onCancel={handleCancel}
               />
-            </div>
-          ) : (
-            <div className="text-center">
-              <p>No order details found. Please try again.</p>
             </div>
           )}
         </div>
