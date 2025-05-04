@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
@@ -121,8 +122,8 @@ export function CartSheet() {
       setIsCheckoutDialogOpen(false);
       setSheetOpen(false);
       
-      // Redirect to payment page with order details
-      navigate(`/payment?orderId=${orderData.id}&amount=${totalAmount}`);
+      // Redirect to payment processing page with order details
+      navigate(`/order-payment?orderId=${orderData.id}`);
       
     } catch (error) {
       console.error('Error during checkout:', error);
