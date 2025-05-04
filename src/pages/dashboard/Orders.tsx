@@ -18,6 +18,39 @@ const Orders = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
+      // Count pending orders
+      const countPendingOrders = async () => {
+        // Get viewed orders from localStorage
+        const viewedOrders = new Set(JSON.parse(localStorage.getItem("viewedOrders") || "[]"));
+        
+        // Get all orders
+        const { data: allOrders } = await supabase
+          .from('orders')
+          .select(`
+            id,
+            order_items(
+              product:products(seller_id)
+            )
+          `)
+          .eq('status', 'pending')
+          .order('created_at', { ascending: false });
+
+        if (!allOrders) return;
+        
+        // Filter orders to only include those with products from this seller
+        // and that haven't been viewed yet
+        const pendingOrders = allOrders.filter(order => 
+          !viewedOrders.has(order.id) && 
+          order.order_items.some(item => item.product?.seller_id === user.id)
+        );
+        
+        const count = pendingOrders.length;
+        setNewOrders(count);
+        setShowAlert(count > 0);
+      };
+
+      countPendingOrders();
+
       // Subscribe to new orders
       const channel = supabase
         .channel('db-changes')
@@ -80,17 +113,17 @@ const Orders = () => {
           {newOrders > 0 && (
             <div className="flex items-center text-market-600">
               <Bell className="h-5 w-5 mr-1" />
-              <span>{newOrders} new {newOrders === 1 ? 'order' : 'orders'}</span>
+              <span>{newOrders} new order{newOrders === 1 ? '' : 's'} to review</span>
             </div>
           )}
         </div>
 
         {showAlert && (
-          <Alert className="bg-market-50 border-market-200">
+          <Alert className="bg-yellow-50 border-yellow-200">
             <AlertDescription className="flex justify-between items-center">
               <div>
-                You have {newOrders} new {newOrders === 1 ? 'order' : 'orders'} from customers! 
-                Please review and process them.
+                <span className="font-bold">Action Required:</span> You have {newOrders} new {newOrders === 1 ? 'order' : 'orders'} from customers! 
+                Please review and either accept or decline them.
               </div>
               <button 
                 onClick={handleDismissAlert}

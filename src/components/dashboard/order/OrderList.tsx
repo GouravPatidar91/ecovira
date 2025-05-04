@@ -158,9 +158,16 @@ const OrderList = () => {
         order.id === orderId ? { ...order, status } : order
       ));
 
+      // If order is being approved (set to processing), notify the buyer
+      if (status === 'processing') {
+        await notifyBuyerOrderAccepted(orderId);
+      }
+
       toast({
         title: "Success",
-        description: "Order status updated successfully",
+        description: status === 'processing' 
+          ? "Order approved and buyer notified" 
+          : "Order status updated successfully",
       });
     } catch (error) {
       toast({
@@ -168,6 +175,30 @@ const OrderList = () => {
         description: "Failed to update order status",
         variant: "destructive",
       });
+    }
+  };
+
+  const notifyBuyerOrderAccepted = async (orderId: string) => {
+    try {
+      // Get order to find the buyer
+      const { data: order } = await supabase
+        .from('orders')
+        .select('buyer_id')
+        .eq('id', orderId)
+        .single();
+
+      if (!order) return;
+
+      // Here you would implement your notification system
+      // For now we'll just console.log it
+      console.log(`Notifying buyer ${order.buyer_id} that order ${orderId} has been accepted`);
+
+      // In a real app, you might:
+      // 1. Send an email
+      // 2. Send a push notification
+      // 3. Add an entry to a notifications table
+    } catch (error) {
+      console.error('Error notifying buyer:', error);
     }
   };
 
@@ -287,20 +318,41 @@ const OrderList = () => {
                     </Badge>
                   </TableCell>
                   <TableCell>
-                    <Select
-                      value={order.status || 'pending'}
-                      onValueChange={(value) => updateOrderStatus(order.id, value)}
-                    >
-                      <SelectTrigger className="w-32">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="pending">Pending</SelectItem>
-                        <SelectItem value="processing">Processing</SelectItem>
-                        <SelectItem value="completed">Completed</SelectItem>
-                        <SelectItem value="cancelled">Cancelled</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    {order.status === 'pending' ? (
+                      <div className="flex space-x-2">
+                        <Button 
+                          variant="default"
+                          size="sm"
+                          className="bg-green-600 hover:bg-green-700"
+                          onClick={() => updateOrderStatus(order.id, 'processing')}
+                        >
+                          Accept Order
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="text-red-500"
+                          onClick={() => updateOrderStatus(order.id, 'cancelled')}
+                        >
+                          Decline
+                        </Button>
+                      </div>
+                    ) : (
+                      <Select
+                        value={order.status || 'pending'}
+                        onValueChange={(value) => updateOrderStatus(order.id, value)}
+                      >
+                        <SelectTrigger className="w-32">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="pending">Pending</SelectItem>
+                          <SelectItem value="processing">Processing</SelectItem>
+                          <SelectItem value="completed">Completed</SelectItem>
+                          <SelectItem value="cancelled">Cancelled</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    )}
                   </TableCell>
                 </TableRow>
               ))

@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
@@ -30,7 +31,7 @@ export function CartSheet() {
     }
   };
 
-  const handleCheckout = async () => {
+  const handlePlaceOrder = async () => {
     if (!shippingAddress.trim()) {
       toast({
         title: "Missing Address",
@@ -55,18 +56,78 @@ export function CartSheet() {
         return;
       }
 
+      // Create the order directly - no payment step
+      const { data: orderData, error: orderError } = await supabase
+        .from('orders')
+        .insert({
+          buyer_id: session.user.id,
+          total_amount: totalAmount,
+          shipping_address: shippingAddress,
+          status: 'pending',
+          payment_status: 'pending' // Orders start as pending payment
+        })
+        .select()
+        .single();
+
+      if (orderError) {
+        console.error('Order creation error:', orderError);
+        toast({
+          title: "Order Creation Failed",
+          description: "Could not create your order. Please try again.",
+          variant: "destructive",
+        });
+        setIsProcessing(false);
+        return;
+      }
+
+      // Create order items
+      const orderItems = items.map(item => ({
+        order_id: orderData.id,
+        product_id: item.product_id,
+        quantity: item.quantity,
+        unit_price: item.price,
+        total_price: item.price * item.quantity
+      }));
+
+      const { error: itemsError } = await supabase
+        .from('order_items')
+        .insert(orderItems);
+
+      if (itemsError) {
+        console.error('Order items error:', itemsError);
+        
+        // Clean up the order since the items couldn't be added
+        await supabase.from('orders').delete().eq('id', orderData.id);
+        
+        toast({
+          title: "Order Items Failed",
+          description: "Could not add items to your order. Please try again.",
+          variant: "destructive",
+        });
+        setIsProcessing(false);
+        return;
+      }
+
+      // Clear cart after successful order
+      await clearCart();
+      
       // Close the checkout dialog and cart sheet
       setIsCheckoutDialogOpen(false);
       setSheetOpen(false);
       
-      // Redirect to payment page with shipping address
-      navigate(`/payment?address=${encodeURIComponent(shippingAddress)}`);
+      toast({
+        title: "Order Placed Successfully",
+        description: "Your order has been sent to sellers for approval",
+      });
+      
+      // Redirect to a thank you or orders page
+      navigate("/market?orderPlaced=true");
       
     } catch (error) {
-      console.error('Error during checkout:', error);
+      console.error('Error during order placement:', error);
       toast({
-        title: "Checkout Error",
-        description: "Failed to process your checkout. Please try again.",
+        title: "Order Processing Error",
+        description: "Failed to process your order. Please try again.",
         variant: "destructive",
       });
       setIsProcessing(false);
@@ -173,7 +234,7 @@ export function CartSheet() {
                 onClick={() => setIsCheckoutDialogOpen(true)}
                 disabled={items.length === 0}
               >
-                Proceed to Checkout
+                Place Order
               </Button>
             </div>
           </div>
@@ -185,7 +246,7 @@ export function CartSheet() {
           <AlertDialogHeader>
             <AlertDialogTitle>Complete your order</AlertDialogTitle>
             <AlertDialogDescription>
-              Please provide your shipping address to continue to payment.
+              Please provide your shipping address to place your order. The sellers will review your order and confirm availability.
             </AlertDialogDescription>
           </AlertDialogHeader>
           
@@ -201,14 +262,14 @@ export function CartSheet() {
             </div>
             
             <div className="text-sm text-gray-500">
-              Total amount to be paid: ${totalAmount.toFixed(2)}
+              Total amount: ${totalAmount.toFixed(2)} (payment will be arranged after seller approval)
             </div>
           </div>
 
           <AlertDialogFooter>
             <AlertDialogCancel disabled={isProcessing}>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              onClick={handleCheckout}
+              onClick={handlePlaceOrder}
               disabled={isProcessing || !shippingAddress.trim()}
             >
               {isProcessing ? (
@@ -217,7 +278,7 @@ export function CartSheet() {
                   Processing
                 </>
               ) : (
-                'Continue to Payment'
+                'Place Order'
               )}
             </AlertDialogAction>
           </AlertDialogFooter>

@@ -28,6 +28,7 @@ const SellerDashboard = () => {
             product:products(seller_id)
           )
         `)
+        .eq('status', 'pending') // Only show pending orders that need review
         .order('created_at', { ascending: false });
 
       if (!allOrders) return;
@@ -83,12 +84,18 @@ const SellerDashboard = () => {
         >
           View Orders
           {newOrdersCount > 0 && (
-            <Badge className="absolute -top-2 -right-2 bg-market-600 text-white">
+            <Badge className="absolute -top-2 -right-2 bg-red-600 text-white">
               {newOrdersCount}
             </Badge>
           )}
         </Button>
       </div>
+      {newOrdersCount > 0 && (
+        <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-md text-yellow-800 flex items-center">
+          <Bell className="h-5 w-5 mr-2 text-yellow-600" />
+          You have {newOrdersCount} new {newOrdersCount === 1 ? 'order' : 'orders'} waiting for your approval!
+        </div>
+      )}
     </div>
   );
 };
