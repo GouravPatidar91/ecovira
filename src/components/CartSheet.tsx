@@ -56,7 +56,35 @@ export function CartSheet() {
         return;
       }
 
-      // Create the order directly - no payment step
+      // Create order items first to ensure products exist and are valid
+      const orderItems = items.map(item => ({
+        product_id: item.product_id,
+        quantity: item.quantity,
+        unit_price: item.price,
+        total_price: item.price * item.quantity
+      }));
+      
+      // Verify all product IDs exist in the database
+      for (const item of orderItems) {
+        const { data: product, error: productError } = await supabase
+          .from('products')
+          .select('id')
+          .eq('id', item.product_id)
+          .single();
+          
+        if (productError || !product) {
+          console.error('Product validation error:', productError);
+          toast({
+            title: "Order Creation Failed",
+            description: "One or more products in your cart are no longer available.",
+            variant: "destructive",
+          });
+          setIsProcessing(false);
+          return;
+        }
+      }
+      
+      // Create the order with a transaction-like approach
       const { data: orderData, error: orderError } = await supabase
         .from('orders')
         .insert({
@@ -64,7 +92,7 @@ export function CartSheet() {
           total_amount: totalAmount,
           shipping_address: shippingAddress,
           status: 'pending',
-          payment_status: 'pending' // Orders start as pending payment
+          payment_status: 'pending'
         })
         .select()
         .single();
@@ -79,19 +107,17 @@ export function CartSheet() {
         setIsProcessing(false);
         return;
       }
-
-      // Create order items
-      const orderItems = items.map(item => ({
-        order_id: orderData.id,
-        product_id: item.product_id,
-        quantity: item.quantity,
-        unit_price: item.price,
-        total_price: item.price * item.quantity
+      
+      // Add order_id to each order item
+      const orderItemsWithOrderId = orderItems.map(item => ({
+        ...item,
+        order_id: orderData.id
       }));
-
+      
+      // Insert order items
       const { error: itemsError } = await supabase
         .from('order_items')
-        .insert(orderItems);
+        .insert(orderItemsWithOrderId);
 
       if (itemsError) {
         console.error('Order items error:', itemsError);
