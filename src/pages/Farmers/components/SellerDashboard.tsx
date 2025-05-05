@@ -5,11 +5,13 @@ import { Badge } from "@/components/ui/badge";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Bell, Loader2 } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 const SellerDashboard = () => {
   const navigate = useNavigate();
   const [newOrdersCount, setNewOrdersCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
+  const { toast } = useToast();
 
   useEffect(() => {
     // Get orders that the seller hasn't viewed yet
@@ -22,11 +24,13 @@ const SellerDashboard = () => {
         // Get viewed orders from localStorage
         const viewedOrders = new Set(JSON.parse(localStorage.getItem("viewedOrders") || "[]"));
         
-        // Get all orders
+        // Get all orders with their items and products
         const { data: allOrders, error } = await supabase
           .from('orders')
           .select(`
             id,
+            status,
+            created_at,
             order_items(
               product:products(seller_id)
             )
@@ -36,15 +40,20 @@ const SellerDashboard = () => {
 
         if (error) {
           console.error('Error fetching orders:', error);
+          toast({
+            title: "Error",
+            description: "Failed to load new orders",
+            variant: "destructive",
+          });
           return;
         }
         
         // Filter orders to only include those with products from this seller
         // and that haven't been viewed yet
-        const newOrders = allOrders.filter(order => 
+        const newOrders = allOrders?.filter(order => 
           !viewedOrders.has(order.id) && 
           order.order_items.some(item => item.product?.seller_id === user.id)
-        );
+        ) || [];
         
         setNewOrdersCount(newOrders.length);
       } catch (error) {
@@ -66,8 +75,32 @@ const SellerDashboard = () => {
           schema: 'public',
           table: 'orders'
         },
-        () => {
+        (payload) => {
+          console.log('New order created:', payload);
           // When a new order is created, update the count
+          getNewOrdersCount();
+          
+          // Show a toast notification for the new order
+          toast({
+            title: "New Order Received",
+            description: "You have received a new order that requires your approval",
+          });
+        }
+      )
+      .subscribe();
+
+    // Also listen for order updates
+    const updateChannel = supabase
+      .channel('order-updates')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'orders'
+        },
+        () => {
+          // When an order is updated, refresh the count
           getNewOrdersCount();
         }
       )
@@ -75,8 +108,9 @@ const SellerDashboard = () => {
 
     return () => {
       supabase.removeChannel(channel);
+      supabase.removeChannel(updateChannel);
     };
-  }, []);
+  }, [toast]);
 
   return (
     <div className="mb-8 p-6 bg-white rounded-lg shadow-sm border">
