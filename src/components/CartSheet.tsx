@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
@@ -44,7 +45,12 @@ export function CartSheet() {
       setIsProcessing(true);
       
       // 1. Check if user is authenticated
-      const { data: { session } } = await supabase.auth.getSession();
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      
+      if (sessionError) {
+        console.error("Session error:", sessionError);
+        throw new Error("Authentication error");
+      }
       
       if (!session) {
         toast({
@@ -56,7 +62,7 @@ export function CartSheet() {
         return;
       }
 
-      // 2. Validate cart items and check product availability
+      // 2. Validate cart items
       if (items.length === 0) {
         toast({
           title: "Empty Cart",
@@ -67,73 +73,65 @@ export function CartSheet() {
         return;
       }
 
-      // 3. Create the order with minimal data first to get an ID
-      const { data: orderData, error: orderError } = await supabase
+      console.log("Placing order with items:", items);
+      console.log("User ID:", session.user.id);
+      console.log("Shipping address:", shippingAddress);
+
+      // 3. Create the order first
+      const orderData = {
+        buyer_id: session.user.id,
+        total_amount: totalAmount,
+        shipping_address: shippingAddress,
+        status: 'pending',
+        payment_status: 'pending'
+      };
+      
+      console.log("Creating order with data:", orderData);
+      
+      const { data: newOrder, error: orderError } = await supabase
         .from('orders')
-        .insert({
-          buyer_id: session.user.id,
-          total_amount: totalAmount,
-          shipping_address: shippingAddress,
-          status: 'pending',
-          payment_status: 'pending'
-        })
+        .insert(orderData)
         .select('id')
         .single();
 
       if (orderError) {
         console.error('Order creation error details:', orderError);
-        toast({
-          title: "Order Creation Failed",
-          description: "Could not create your order. Please try again.",
-          variant: "destructive",
-        });
-        setIsProcessing(false);
-        return;
+        throw new Error("Failed to create order");
       }
       
-      if (!orderData || !orderData.id) {
+      if (!newOrder || !newOrder.id) {
         console.error('Order created but no ID returned');
-        toast({
-          title: "Order Processing Error",
-          description: "Order created but ID not returned. Please contact support.",
-          variant: "destructive",
-        });
-        setIsProcessing(false);
-        return;
+        throw new Error("Order processing error: No ID returned");
       }
       
-      console.log("Order created successfully with ID:", orderData.id);
+      console.log("Order created successfully with ID:", newOrder.id);
       
-      // 4. Prepare order items data
+      // 4. Prepare and insert order items
       const orderItems = items.map(item => ({
-        order_id: orderData.id,
+        order_id: newOrder.id,
         product_id: item.product_id,
         quantity: item.quantity,
         unit_price: item.price,
         total_price: item.price * item.quantity
       }));
       
-      // 5. Insert all order items in a single operation
+      console.log("Creating order items:", orderItems);
+      
       const { error: itemsError } = await supabase
         .from('order_items')
         .insert(orderItems);
 
       if (itemsError) {
-        console.error('Order items insertion error details:', itemsError);
+        console.error('Order items insertion error:', itemsError);
         
-        // Clean up the order since the items couldn't be added
-        await supabase.from('orders').delete().eq('id', orderData.id);
+        // Clean up the order if items couldn't be added
+        await supabase.from('orders').delete().eq('id', newOrder.id);
         
-        toast({
-          title: "Order Items Failed",
-          description: "Could not add items to your order. Please try again.",
-          variant: "destructive",
-        });
-        setIsProcessing(false);
-        return;
+        throw new Error("Failed to add items to your order");
       }
 
-      // 6. Order created successfully - clear cart and notify user
+      // 5. Order created successfully
+      console.log("Order completed successfully");
       await clearCart();
       setIsCheckoutDialogOpen(false);
       setSheetOpen(false);
@@ -150,7 +148,7 @@ export function CartSheet() {
       console.error('Unexpected error during order placement:', error);
       toast({
         title: "Order Processing Error",
-        description: "An unexpected error occurred. Please try again.",
+        description: error instanceof Error ? error.message : "An unexpected error occurred. Please try again.",
         variant: "destructive",
       });
     } finally {

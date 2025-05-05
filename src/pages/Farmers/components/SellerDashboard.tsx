@@ -18,9 +18,20 @@ const SellerDashboard = () => {
     const getNewOrdersCount = async () => {
       try {
         setIsLoading(true);
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return;
+        const { data: { user }, error: userError } = await supabase.auth.getUser();
+        
+        if (userError) {
+          console.error('User authentication error:', userError);
+          return;
+        }
+        
+        if (!user) {
+          console.log('No authenticated user found');
+          return;
+        }
 
+        console.log('Fetching orders for seller:', user.id);
+        
         // Get viewed orders from localStorage
         const viewedOrders = new Set(JSON.parse(localStorage.getItem("viewedOrders") || "[]"));
         
@@ -47,6 +58,8 @@ const SellerDashboard = () => {
           });
           return;
         }
+
+        console.log('Retrieved orders:', allOrders);
         
         // Filter orders to only include those with products from this seller
         // and that haven't been viewed yet
@@ -55,6 +68,7 @@ const SellerDashboard = () => {
           order.order_items.some(item => item.product?.seller_id === user.id)
         ) || [];
         
+        console.log('New unviewed orders for this seller:', newOrders.length);
         setNewOrdersCount(newOrders.length);
       } catch (error) {
         console.error('Error getting new orders count:', error);
