@@ -56,35 +56,7 @@ export function CartSheet() {
         return;
       }
 
-      // Create order items first to ensure products exist and are valid
-      const orderItems = items.map(item => ({
-        product_id: item.product_id,
-        quantity: item.quantity,
-        unit_price: item.price,
-        total_price: item.price * item.quantity
-      }));
-      
-      // Verify all product IDs exist in the database
-      for (const item of orderItems) {
-        const { data: product, error: productError } = await supabase
-          .from('products')
-          .select('id')
-          .eq('id', item.product_id)
-          .single();
-          
-        if (productError || !product) {
-          console.error('Product validation error:', productError);
-          toast({
-            title: "Order Creation Failed",
-            description: "One or more products in your cart are no longer available.",
-            variant: "destructive",
-          });
-          setIsProcessing(false);
-          return;
-        }
-      }
-      
-      // Create the order with a transaction-like approach
+      // First, create the order record
       const { data: orderData, error: orderError } = await supabase
         .from('orders')
         .insert({
@@ -108,16 +80,18 @@ export function CartSheet() {
         return;
       }
       
-      // Add order_id to each order item
-      const orderItemsWithOrderId = orderItems.map(item => ({
-        ...item,
-        order_id: orderData.id
+      // Then, create order items for each product
+      const orderItems = items.map(item => ({
+        order_id: orderData.id,
+        product_id: item.product_id,
+        quantity: item.quantity,
+        unit_price: item.price,
+        total_price: item.price * item.quantity
       }));
       
-      // Insert order items
       const { error: itemsError } = await supabase
         .from('order_items')
-        .insert(orderItemsWithOrderId);
+        .insert(orderItems);
 
       if (itemsError) {
         console.error('Order items error:', itemsError);
@@ -156,6 +130,7 @@ export function CartSheet() {
         description: "Failed to process your order. Please try again.",
         variant: "destructive",
       });
+    } finally {
       setIsProcessing(false);
     }
   };
