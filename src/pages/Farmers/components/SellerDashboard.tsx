@@ -61,10 +61,19 @@ const SellerDashboard = () => {
 
         console.log('Retrieved orders:', allOrders);
         
+        if (!allOrders || allOrders.length === 0) {
+          console.log('No orders found');
+          setNewOrdersCount(0);
+          setIsLoading(false);
+          return;
+        }
+        
         // Filter orders to only include those with products from this seller
         // and that haven't been viewed yet
-        const newOrders = allOrders?.filter(order => 
+        const newOrders = allOrders.filter(order => 
+          order && 
           !viewedOrders.has(order.id) && 
+          order.order_items && 
           order.order_items.some(item => item.product?.seller_id === user.id)
         ) || [];
         

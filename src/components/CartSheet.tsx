@@ -43,16 +43,18 @@ export function CartSheet() {
 
     try {
       setIsProcessing(true);
+      console.log("Starting order placement process");
       
       // 1. Check if user is authenticated
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
       
       if (sessionError) {
         console.error("Session error:", sessionError);
         throw new Error("Authentication error");
       }
       
-      if (!session) {
+      if (!sessionData || !sessionData.session) {
+        console.error("No active session found");
         toast({
           title: "Authentication Error",
           description: "Please login to complete your order",
@@ -61,6 +63,9 @@ export function CartSheet() {
         setIsProcessing(false);
         return;
       }
+      
+      const session = sessionData.session;
+      console.log("User authenticated successfully:", session.user.id);
 
       // 2. Validate cart items
       if (items.length === 0) {
@@ -74,7 +79,6 @@ export function CartSheet() {
       }
 
       console.log("Placing order with items:", items);
-      console.log("User ID:", session.user.id);
       console.log("Shipping address:", shippingAddress);
 
       // 3. Create the order first
@@ -96,12 +100,12 @@ export function CartSheet() {
 
       if (orderError) {
         console.error('Order creation error details:', orderError);
-        throw new Error("Failed to create order");
+        throw new Error(`Failed to create order: ${orderError.message}`);
       }
       
       if (!newOrder || !newOrder.id) {
         console.error('Order created but no ID returned');
-        throw new Error("Order processing error: No ID returned");
+        throw new Error("Order processing error: No order ID returned");
       }
       
       console.log("Order created successfully with ID:", newOrder.id);
@@ -127,7 +131,7 @@ export function CartSheet() {
         // Clean up the order if items couldn't be added
         await supabase.from('orders').delete().eq('id', newOrder.id);
         
-        throw new Error("Failed to add items to your order");
+        throw new Error(`Failed to add items to your order: ${itemsError.message}`);
       }
 
       // 5. Order created successfully
@@ -145,7 +149,7 @@ export function CartSheet() {
       navigate("/market?orderPlaced=true");
       
     } catch (error) {
-      console.error('Unexpected error during order placement:', error);
+      console.error('Order placement error:', error);
       toast({
         title: "Order Processing Error",
         description: error instanceof Error ? error.message : "An unexpected error occurred. Please try again.",
