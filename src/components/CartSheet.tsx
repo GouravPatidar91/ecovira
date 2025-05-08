@@ -46,17 +46,17 @@ export function CartSheet() {
       console.log("Starting order placement process");
       
       // 1. Check if user is authenticated
-      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      const { data, error: sessionError } = await supabase.auth.getSession();
       
       if (sessionError) {
         console.error("Session error:", sessionError);
         throw new Error("Authentication error");
       }
       
-      if (!sessionData || !sessionData.session) {
+      if (!data || !data.session) {
         console.error("No active session found");
         toast({
-          title: "Authentication Error",
+          title: "Authentication Required",
           description: "Please login to complete your order",
           variant: "destructive",
         });
@@ -64,7 +64,7 @@ export function CartSheet() {
         return;
       }
       
-      const session = sessionData.session;
+      const session = data.session;
       console.log("User authenticated successfully:", session.user.id);
 
       // 2. Validate cart items
@@ -145,8 +145,8 @@ export function CartSheet() {
         description: "Your order has been sent to sellers for approval",
       });
       
-      // Redirect to market with success parameter
-      navigate("/market?orderPlaced=true");
+      // Instead of redirecting to the market page, let's take them to the payment processing page
+      navigate(`/payment?address=${encodeURIComponent(shippingAddress)}`);
       
     } catch (error) {
       console.error('Order placement error:', error);

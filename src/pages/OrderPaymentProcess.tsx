@@ -38,7 +38,9 @@ const OrderPaymentProcess = () => {
         setOrderId(id);
         
         // Get the session
-        const { data: { session } } = await supabase.auth.getSession();
+        const { data } = await supabase.auth.getSession();
+        const session = data.session;
+        
         if (!session) {
           setError('Authentication required');
           setPaymentStatus('failed');

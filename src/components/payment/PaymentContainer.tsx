@@ -17,32 +17,49 @@ const PaymentContainer = () => {
   const [shippingAddress, setShippingAddress] = useState("");
   
   useEffect(() => {
-    // Extract shipping address from URL parameter
-    const params = new URLSearchParams(location.search);
-    const address = params.get("address");
+    const checkAuthAndCart = async () => {
+      // Check authentication
+      const { data } = await supabase.auth.getSession();
+      
+      if (!data.session) {
+        toast({
+          title: "Authentication Required",
+          description: "Please sign in to complete your purchase",
+          variant: "destructive",
+        });
+        navigate("/auth");
+        return;
+      }
+      
+      // Extract shipping address from URL parameter
+      const params = new URLSearchParams(location.search);
+      const address = params.get("address");
+      
+      if (!address) {
+        toast({
+          title: "Error",
+          description: "Shipping address is missing",
+          variant: "destructive",
+        });
+        navigate("/market");
+        return;
+      }
+  
+      setShippingAddress(address);
+      
+      // Check if cart is empty
+      if (items.length === 0) {
+        toast({
+          title: "Empty Cart",
+          description: "Your shopping cart is empty",
+          variant: "destructive",
+        });
+        navigate("/market");
+        return;
+      }
+    };
     
-    if (!address) {
-      toast({
-        title: "Error",
-        description: "Shipping address is missing",
-        variant: "destructive",
-      });
-      navigate("/market");
-      return;
-    }
-
-    setShippingAddress(address);
-    
-    // Check if cart is empty
-    if (items.length === 0) {
-      toast({
-        title: "Empty Cart",
-        description: "Your shopping cart is empty",
-        variant: "destructive",
-      });
-      navigate("/market");
-      return;
-    }
+    checkAuthAndCart();
   }, [location.search, navigate, toast, items]);
 
   const calculateTotal = () => {

@@ -417,6 +417,10 @@ export type Database = {
           sender_name: string
         }[]
       }
+      user_is_seller_for_order: {
+        Args: { order_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
       user_role: "admin" | "farmer" | "buyer"
