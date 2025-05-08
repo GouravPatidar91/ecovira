@@ -69,89 +69,50 @@ const OrderPaymentProcess = () => {
           return;
         }
 
-        // Fetch order details directly using a single query
-        const { data: order, error: orderError } = await supabase
-          .from('orders')
-          .select(`
-            id, 
-            buyer_id,
-            total_amount, 
-            shipping_address, 
-            status,
-            payment_status,
-            created_at
-          `)
-          .eq('id', id)
-          .eq('buyer_id', session.user.id)
-          .single();
-          
-        if (orderError || !order) {
+        // Use the get_order_details RPC function to avoid RLS recursion
+        const { data: orderData, error: orderError } = await supabase.rpc(
+          'get_order_details',
+          { 
+            p_order_id: id,
+            p_user_id: session.user.id 
+          }
+        );
+
+        if (orderError || !orderData || orderData.length === 0) {
           console.error('Error fetching order:', orderError);
-          
-          // If buyer fetch fails, check if user is a seller for this order
-          const { data: sellerOrderData } = await supabase.rpc('user_is_seller_for_order', { order_id: id });
-          
-          if (!sellerOrderData) {
-            setError('Could not retrieve order details - not authorized');
-            setPaymentStatus('failed');
-            setIsProcessing(false);
-            return;
-          }
-          
-          // If they're a seller, fetch the order without the buyer_id restriction
-          const { data: sellerOrder, error: sellerOrderError } = await supabase
-            .from('orders')
-            .select(`
-              id, 
-              buyer_id,
-              total_amount, 
-              shipping_address, 
-              status,
-              payment_status,
-              created_at
-            `)
-            .eq('id', id)
-            .single();
-            
-          if (sellerOrderError || !sellerOrder) {
-            console.error('Error fetching order as seller:', sellerOrderError);
-            setError('Could not retrieve order details');
-            setPaymentStatus('failed');
-            setIsProcessing(false);
-            return;
-          }
-          
-          setOrderDetails(sellerOrder);
-        } else {
-          setOrderDetails(order);
+          setError('Could not retrieve order details - not authorized');
+          setPaymentStatus('failed');
+          setIsProcessing(false);
+          return;
         }
+          
+        // Set the order details from the RPC result
+        setOrderDetails(orderData[0]);
 
         // Fetch order items separately (no RLS dependency)
-        if (orderDetails) {
-          const { data: orderItems, error: itemsError } = await supabase
-            .from('order_items')
-            .select(`
-              quantity,
-              unit_price,
-              product_id,
-              products (
-                name,
-                unit
-              )
-            `)
-            .eq('order_id', id);
-            
-          if (itemsError) {
-            console.error('Error fetching order items:', itemsError);
-          } else {
-            // Add order items to the order object
-            setOrderDetails(prevState => {
-              if (prevState) {
-                return { ...prevState, order_items: orderItems || [] };
-              }
-              return prevState;
-            });
-          }
+        const { data: orderItems, error: itemsError } = await supabase
+          .from('order_items')
+          .select(`
+            quantity,
+            unit_price,
+            product_id,
+            products (
+              name,
+              unit
+            )
+          `)
+          .eq('order_id', id);
+          
+        if (itemsError) {
+          console.error('Error fetching order items:', itemsError);
+        } else {
+          // Add order items to the order object
+          setOrderDetails(prevState => {
+            if (prevState) {
+              return { ...prevState, order_items: orderItems || [] };
+            }
+            return prevState;
+          });
         }
         
         // Simulate payment processing

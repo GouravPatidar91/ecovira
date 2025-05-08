@@ -88,8 +88,8 @@ const PaymentContainer = () => {
         // Generate a UUID on the client-side to avoid RLS policy issues
         const newOrderId = crypto.randomUUID();
 
-        // Create new order directly with a custom SQL function call to bypass RLS
-        const { data: insertedOrder, error: orderInsertError } = await supabase.rpc(
+        // Use the create_order RPC function to bypass RLS
+        const { data, error } = await supabase.rpc(
           'create_order',
           { 
             p_buyer_id: user.id,
@@ -99,37 +99,17 @@ const PaymentContainer = () => {
           }
         );
 
-        if (orderInsertError) {
-          console.error('Order creation error:', orderInsertError);
-          
-          // Fallback direct insert if RPC fails - with explicit fields
-          const { data: directInsert, error: directError } = await supabase
-            .from('orders')
-            .insert({
-              id: newOrderId,
-              buyer_id: user.id,
-              total_amount: calculateTotal(),
-              shipping_address: shippingAddress,
-              status: 'processing',
-              payment_status: 'paid'
-            })
-            .select()
-            .single();
-            
-          if (directError) {
-            console.error('Direct insert error:', directError);
-            toast({
-              title: "Order Creation Failed",
-              description: "Could not create your order. Please try again.",
-              variant: "destructive",
-            });
-            return;
-          }
-          
-          orderData = directInsert;
-        } else {
-          orderData = { id: newOrderId };
+        if (error) {
+          console.error('Order creation error:', error);
+          toast({
+            title: "Order Creation Failed",
+            description: "Could not create your order. Please try again.",
+            variant: "destructive",
+          });
+          return;
         }
+        
+        orderData = { id: data || newOrderId };
         
         // Create order items one by one to avoid RLS issues
         for (const item of items) {

@@ -405,6 +405,15 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      create_order: {
+        Args: {
+          p_buyer_id: string
+          p_total_amount: number
+          p_shipping_address: string
+          p_order_id?: string
+        }
+        Returns: string
+      }
       get_conversation_messages: {
         Args: { conv_id: string }
         Returns: {
@@ -415,6 +424,18 @@ export type Database = {
           is_read: boolean
           created_at: string
           sender_name: string
+        }[]
+      }
+      get_order_details: {
+        Args: { p_order_id: string; p_user_id: string }
+        Returns: {
+          id: string
+          buyer_id: string
+          total_amount: number
+          shipping_address: string
+          status: string
+          payment_status: string
+          created_at: string
         }[]
       }
       user_is_seller_for_order: {
