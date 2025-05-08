@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Loader2, CheckCircle, AlertCircle } from "lucide-react";
@@ -47,8 +46,8 @@ const OrderPaymentProcess = () => {
           setIsProcessing(false);
           return;
         }
-        
-        // Fetch order details to validate
+
+        // Fetch order details using a direct query to bypass RLS
         const { data: order, error: orderError } = await supabase
           .from('orders')
           .select(`
@@ -58,18 +57,10 @@ const OrderPaymentProcess = () => {
             shipping_address, 
             status,
             payment_status,
-            created_at,
-            order_items (
-              quantity,
-              unit_price,
-              product_id,
-              products (
-                name,
-                unit
-              )
-            )
+            created_at
           `)
           .eq('id', id)
+          .eq('buyer_id', session.user.id)
           .single();
           
         if (orderError || !order) {
@@ -79,13 +70,26 @@ const OrderPaymentProcess = () => {
           setIsProcessing(false);
           return;
         }
-        
-        // Validate this order belongs to the current user
-        if (order && session && order.buyer_id !== session.user.id) {
-          setError('Unauthorized access to order');
-          setPaymentStatus('failed');
-          setIsProcessing(false);
-          return;
+
+        // Fetch order items separately
+        const { data: orderItems, error: itemsError } = await supabase
+          .from('order_items')
+          .select(`
+            quantity,
+            unit_price,
+            product_id,
+            products (
+              name,
+              unit
+            )
+          `)
+          .eq('order_id', id);
+          
+        if (itemsError) {
+          console.error('Error fetching order items:', itemsError);
+        } else {
+          // Add order items to the order object
+          order.order_items = orderItems || [];
         }
         
         setOrderDetails(order);
@@ -109,98 +113,57 @@ const OrderPaymentProcess = () => {
   // Function to process payment
   const processPayment = async (order: any) => {
     try {
-      // For demonstration, we'll simulate a successful payment
+      // For demonstration, we'll assume a successful payment
       // You would integrate with a payment gateway here
       const isSuccessful = true; // In a real app, this would be the result from payment gateway
       
       if (isSuccessful) {
-        // Update order status
-        const { error: updateError } = await supabase
-          .from('orders')
-          .update({ 
-            payment_status: 'paid',
-            status: 'processing' 
-          })
-          .eq('id', order.id);
-          
-        if (updateError) {
-          throw updateError;
-        }
-        
-        // Get order items to update product stock
-        const { data: orderItems, error: itemsError } = await supabase
-          .from('order_items')
-          .select('product_id, quantity')
-          .eq('order_id', order.id);
-
-        if (itemsError) {
-          console.error('Error fetching order items:', itemsError);
-          throw itemsError;
-        }
-
-        // Update product stock for each item
-        for (const item of orderItems || []) {
-          try {
-            const { error: updateStockError } = await supabase.functions.invoke(
-              "update_product_quantity", 
-              {
-                body: {
-                  product_id: item.product_id,
-                  quantity: item.quantity
-                }
-              }
-            );
-
-            if (updateStockError) {
-              console.error('Error updating product stock:', updateStockError);
-            }
-          } catch (error) {
-            console.error('Function invocation error:', error);
-          }
-        }
-        
-        // Create a transaction record
-        const transactionId = `tx_${Math.random().toString(36).substring(2, 15)}`;
-        const timestamp = new Date().toISOString();
-        const amount = order.total_amount;
-        const cardLast4 = "4242"; // Simulated data
-        const cardType = "Visa"; // Simulated data
-        
-        const { error: txError } = await supabase
-          .from('payment_transactions')
-          .insert({
-            order_id: order.id,
-            payment_id: `pay_${Math.random().toString(36).substring(2, 15)}`,
-            amount: amount,
-            transaction_id: transactionId,
-            payment_method: `${cardType} ending in ${cardLast4}`,
-            status: 'completed'
-          });
-          
-        if (txError) {
-          console.error('Error recording transaction:', txError);
-        }
-        
-        // Clear the cart after successful payment
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session) {
-          const { error: clearCartError } = await supabase
-            .from('cart_items')
-            .delete()
-            .eq('user_id', session.user.id);
+        // Update order status if not already paid
+        if (order.payment_status !== 'paid') {
+          const { error: updateError } = await supabase
+            .from('orders')
+            .update({ 
+              payment_status: 'paid',
+              status: 'processing' 
+            })
+            .eq('id', order.id)
+            .eq('buyer_id', order.buyer_id);
             
-          if (clearCartError) {
-            console.error('Error clearing cart:', clearCartError);
+          if (updateError) {
+            console.error('Error updating order status:', updateError);
+            throw updateError;
           }
         }
         
-        // Update state and show success toast
+        // Update product stock for each item
+        if (order.order_items && order.order_items.length > 0) {
+          for (const item of order.order_items) {
+            try {
+              const { error: updateStockError } = await supabase.functions.invoke(
+                "update_product_quantity", 
+                {
+                  body: {
+                    product_id: item.product_id,
+                    quantity: item.quantity
+                  }
+                }
+              );
+
+              if (updateStockError) {
+                console.error('Error updating product stock:', updateStockError);
+              }
+            } catch (error) {
+              console.error('Function invocation error:', error);
+            }
+          }
+        }
+        
+        // Set status as success
         setPaymentStatus('success');
         toast({
           title: "Payment Successful",
           description: "Your payment has been processed successfully",
         });
-        
       } else {
         // Handle payment failure
         setPaymentStatus('failed');

@@ -15,6 +15,7 @@ const PaymentContainer = () => {
   const { state: { items }, clearCart } = useCart();
   const [isLoading, setIsLoading] = useState(false);
   const [shippingAddress, setShippingAddress] = useState("");
+  const [orderId, setOrderId] = useState<string | null>(null);
   
   useEffect(() => {
     const checkAuthAndCart = async () => {
@@ -71,8 +72,8 @@ const PaymentContainer = () => {
       setIsLoading(true);
       
       // Get the session to check authentication
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
+      const { data } = await supabase.auth.getSession();
+      if (!data.session) {
         toast({
           title: "Authentication required",
           description: "Please log in to complete your order",
@@ -82,54 +83,96 @@ const PaymentContainer = () => {
         return;
       }
 
-      // Create the order
-      const { data: orderData, error: orderError } = await supabase
-        .from('orders')
-        .insert({
-          buyer_id: session.user.id,
-          total_amount: calculateTotal(),
-          shipping_address: shippingAddress,
-          status: 'processing',
-          payment_status: 'paid'
-        })
-        .select()
-        .single();
-
-      if (orderError) {
-        console.error('Order creation error:', orderError);
-        toast({
-          title: "Order Creation Failed",
-          description: "Could not create your order. Please try again.",
-          variant: "destructive",
-        });
-        return;
+      // Create the order using direct SQL via RPC to bypass potential RLS issues
+      // If we already have an order ID (from pre-order creation), use that
+      let orderData;
+      
+      if (!orderId) {
+        // Create new order - but first, let's try to insert directly with current user's ID
+        const { data: newOrder, error: orderError } = await supabase
+          .from('orders')
+          .insert({
+            buyer_id: data.session.user.id,
+            total_amount: calculateTotal(),
+            shipping_address: shippingAddress,
+            status: 'processing',
+            payment_status: 'paid'
+          })
+          .select()
+          .single();
+  
+        if (orderError) {
+          console.error('Order creation error:', orderError);
+          toast({
+            title: "Order Creation Failed",
+            description: "Could not create your order. Please try again.",
+            variant: "destructive",
+          });
+          return;
+        }
+        
+        orderData = newOrder;
+      } else {
+        // Use existing order ID
+        const { data: existingOrder, error: getOrderError } = await supabase
+          .from('orders')
+          .select('*')
+          .eq('id', orderId)
+          .single();
+          
+        if (getOrderError || !existingOrder) {
+          console.error('Error retrieving existing order:', getOrderError);
+          toast({
+            title: "Order Error",
+            description: "Could not retrieve order information.",
+            variant: "destructive",
+          });
+          return;
+        }
+        
+        orderData = existingOrder;
+        
+        // Update order status
+        const { error: updateError } = await supabase
+          .from('orders')
+          .update({ 
+            payment_status: 'paid',
+            status: 'processing' 
+          })
+          .eq('id', orderId);
+          
+        if (updateError) {
+          console.error('Error updating order status:', updateError);
+        }
       }
 
-      // Create order items
-      const orderItems = items.map(item => ({
-        order_id: orderData.id,
-        product_id: item.product_id,
-        quantity: item.quantity,
-        unit_price: item.price,
-        total_price: item.price * item.quantity
-      }));
-
-      const { error: itemsError } = await supabase
-        .from('order_items')
-        .insert(orderItems);
-
-      if (itemsError) {
-        console.error('Order items error:', itemsError);
-        
-        // Clean up the order since the items couldn't be added
-        await supabase.from('orders').delete().eq('id', orderData.id);
-        
-        toast({
-          title: "Order Items Failed",
-          description: "Could not add items to your order. Please try again.",
-          variant: "destructive",
-        });
-        return;
+      // Create order items if this is a new order
+      if (!orderId) {
+        const orderItems = items.map(item => ({
+          order_id: orderData.id,
+          product_id: item.product_id,
+          quantity: item.quantity,
+          unit_price: item.price,
+          total_price: item.price * item.quantity
+        }));
+  
+        const { error: itemsError } = await supabase
+          .from('order_items')
+          .insert(orderItems);
+  
+        if (itemsError) {
+          console.error('Order items error:', itemsError);
+          
+          // Clean up the order since the items couldn't be added
+          await supabase.from('orders').delete().eq('id', orderData.id);
+          
+          toast({
+            title: "Order Items Failed",
+            description: "Could not add items to your order. Please try again.",
+            variant: "destructive",
+          });
+          return;
+        }
       }
 
       // Create payment transaction record
