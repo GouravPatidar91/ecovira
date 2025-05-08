@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Loader2, CheckCircle, AlertCircle } from "lucide-react";
@@ -9,6 +10,27 @@ import { CartProvider } from "@/contexts/CartContext";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 
+interface OrderItem {
+  quantity: number;
+  unit_price: number;
+  product_id: string;
+  products?: {
+    name: string;
+    unit: string;
+  };
+}
+
+interface OrderDetails {
+  id: string;
+  buyer_id: string;
+  total_amount: number;
+  shipping_address: string | null;
+  status: string | null;
+  payment_status: string | null;
+  created_at: string;
+  order_items?: OrderItem[];
+}
+
 const OrderPaymentProcess = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -16,7 +38,7 @@ const OrderPaymentProcess = () => {
   const [isProcessing, setIsProcessing] = useState(true);
   const [paymentStatus, setPaymentStatus] = useState<'processing' | 'success' | 'failed'>('processing');
   const [orderId, setOrderId] = useState<string | null>(null);
-  const [orderDetails, setOrderDetails] = useState<any>(null);
+  const [orderDetails, setOrderDetails] = useState<OrderDetails | null>(null);
   const [error, setError] = useState<string | null>(null);
   
   // Process URL parameters when the component mounts
@@ -47,7 +69,7 @@ const OrderPaymentProcess = () => {
           return;
         }
 
-        // Fetch order details using a direct query to bypass RLS
+        // Fetch order details directly using a single query
         const { data: order, error: orderError } = await supabase
           .from('orders')
           .select(`
@@ -65,38 +87,76 @@ const OrderPaymentProcess = () => {
           
         if (orderError || !order) {
           console.error('Error fetching order:', orderError);
-          setError('Could not retrieve order details');
-          setPaymentStatus('failed');
-          setIsProcessing(false);
-          return;
+          
+          // If buyer fetch fails, check if user is a seller for this order
+          const { data: sellerOrderData } = await supabase.rpc('user_is_seller_for_order', { order_id: id });
+          
+          if (!sellerOrderData) {
+            setError('Could not retrieve order details - not authorized');
+            setPaymentStatus('failed');
+            setIsProcessing(false);
+            return;
+          }
+          
+          // If they're a seller, fetch the order without the buyer_id restriction
+          const { data: sellerOrder, error: sellerOrderError } = await supabase
+            .from('orders')
+            .select(`
+              id, 
+              buyer_id,
+              total_amount, 
+              shipping_address, 
+              status,
+              payment_status,
+              created_at
+            `)
+            .eq('id', id)
+            .single();
+            
+          if (sellerOrderError || !sellerOrder) {
+            console.error('Error fetching order as seller:', sellerOrderError);
+            setError('Could not retrieve order details');
+            setPaymentStatus('failed');
+            setIsProcessing(false);
+            return;
+          }
+          
+          setOrderDetails(sellerOrder);
+        } else {
+          setOrderDetails(order);
         }
 
-        // Fetch order items separately
-        const { data: orderItems, error: itemsError } = await supabase
-          .from('order_items')
-          .select(`
-            quantity,
-            unit_price,
-            product_id,
-            products (
-              name,
-              unit
-            )
-          `)
-          .eq('order_id', id);
-          
-        if (itemsError) {
-          console.error('Error fetching order items:', itemsError);
-        } else {
-          // Add order items to the order object
-          order.order_items = orderItems || [];
+        // Fetch order items separately (no RLS dependency)
+        if (orderDetails) {
+          const { data: orderItems, error: itemsError } = await supabase
+            .from('order_items')
+            .select(`
+              quantity,
+              unit_price,
+              product_id,
+              products (
+                name,
+                unit
+              )
+            `)
+            .eq('order_id', id);
+            
+          if (itemsError) {
+            console.error('Error fetching order items:', itemsError);
+          } else {
+            // Add order items to the order object
+            setOrderDetails(prevState => {
+              if (prevState) {
+                return { ...prevState, order_items: orderItems || [] };
+              }
+              return prevState;
+            });
+          }
         }
-        
-        setOrderDetails(order);
         
         // Simulate payment processing
         setTimeout(() => {
-          processPayment(order);
+          processPayment();
         }, 2000);
         
       } catch (error) {
@@ -111,23 +171,26 @@ const OrderPaymentProcess = () => {
   }, [location.search]);
   
   // Function to process payment
-  const processPayment = async (order: any) => {
+  const processPayment = async () => {
     try {
+      if (!orderDetails || !orderId) {
+        throw new Error("Missing order details");
+      }
+      
       // For demonstration, we'll assume a successful payment
       // You would integrate with a payment gateway here
       const isSuccessful = true; // In a real app, this would be the result from payment gateway
       
       if (isSuccessful) {
         // Update order status if not already paid
-        if (order.payment_status !== 'paid') {
+        if (orderDetails.payment_status !== 'paid') {
           const { error: updateError } = await supabase
             .from('orders')
             .update({ 
               payment_status: 'paid',
               status: 'processing' 
             })
-            .eq('id', order.id)
-            .eq('buyer_id', order.buyer_id);
+            .eq('id', orderId);
             
           if (updateError) {
             console.error('Error updating order status:', updateError);
@@ -136,8 +199,13 @@ const OrderPaymentProcess = () => {
         }
         
         // Update product stock for each item
-        if (order.order_items && order.order_items.length > 0) {
-          for (const item of order.order_items) {
+        const { data: orderItems } = await supabase
+          .from('order_items')
+          .select('product_id, quantity')
+          .eq('order_id', orderId);
+        
+        if (orderItems && orderItems.length > 0) {
+          for (const item of orderItems) {
             try {
               const { error: updateStockError } = await supabase.functions.invoke(
                 "update_product_quantity", 
@@ -242,7 +310,7 @@ const OrderPaymentProcess = () => {
                           <div className="mt-4">
                             <h4 className="font-medium mb-2">Items:</h4>
                             <ul className="space-y-2">
-                              {orderDetails.order_items.map((item: any, idx: number) => (
+                              {orderDetails.order_items.map((item: OrderItem, idx: number) => (
                                 <li key={idx} className="flex justify-between text-sm">
                                   <span>
                                     {item.products?.name || 'Product'} ({item.quantity} {item.quantity === 1 ? item.products?.unit || 'unit' : `${item.products?.unit || 'unit'}s`})

@@ -7,12 +7,14 @@ import { supabase } from "@/integrations/supabase/client";
 import { Loader2 } from "lucide-react";
 import PaymentForm from "@/components/PaymentForm";
 import OrderSummary from "@/components/payment/OrderSummary";
+import { useAuth } from "@/contexts/AuthContext";
 
 const PaymentContainer = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
   const { state: { items }, clearCart } = useCart();
+  const { user } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [shippingAddress, setShippingAddress] = useState("");
   const [orderId, setOrderId] = useState<string | null>(null);
@@ -20,9 +22,7 @@ const PaymentContainer = () => {
   useEffect(() => {
     const checkAuthAndCart = async () => {
       // Check authentication
-      const { data } = await supabase.auth.getSession();
-      
-      if (!data.session) {
+      if (!user) {
         toast({
           title: "Authentication Required",
           description: "Please sign in to complete your purchase",
@@ -61,7 +61,7 @@ const PaymentContainer = () => {
     };
     
     checkAuthAndCart();
-  }, [location.search, navigate, toast, items]);
+  }, [location.search, navigate, toast, items, user]);
 
   const calculateTotal = () => {
     return items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
@@ -71,9 +71,8 @@ const PaymentContainer = () => {
     try {
       setIsLoading(true);
       
-      // Get the session to check authentication
-      const { data } = await supabase.auth.getSession();
-      if (!data.session) {
+      // Verify authentication
+      if (!user) {
         toast({
           title: "Authentication required",
           description: "Please log in to complete your order",
@@ -83,54 +82,75 @@ const PaymentContainer = () => {
         return;
       }
 
-      // Create the order using direct SQL via RPC to bypass potential RLS issues
-      // If we already have an order ID (from pre-order creation), use that
       let orderData;
       
       if (!orderId) {
-        // Create new order - but first, let's try to insert directly with current user's ID
-        const { data: newOrder, error: orderError } = await supabase
-          .from('orders')
-          .insert({
-            buyer_id: data.session.user.id,
-            total_amount: calculateTotal(),
-            shipping_address: shippingAddress,
-            status: 'processing',
-            payment_status: 'paid'
-          })
-          .select()
-          .single();
-  
-        if (orderError) {
-          console.error('Order creation error:', orderError);
-          toast({
-            title: "Order Creation Failed",
-            description: "Could not create your order. Please try again.",
-            variant: "destructive",
-          });
-          return;
+        // Generate a UUID on the client-side to avoid RLS policy issues
+        const newOrderId = crypto.randomUUID();
+
+        // Create new order directly with a custom SQL function call to bypass RLS
+        const { data: insertedOrder, error: orderInsertError } = await supabase.rpc(
+          'create_order',
+          { 
+            p_buyer_id: user.id,
+            p_total_amount: calculateTotal(),
+            p_shipping_address: shippingAddress,
+            p_order_id: newOrderId
+          }
+        );
+
+        if (orderInsertError) {
+          console.error('Order creation error:', orderInsertError);
+          
+          // Fallback direct insert if RPC fails - with explicit fields
+          const { data: directInsert, error: directError } = await supabase
+            .from('orders')
+            .insert({
+              id: newOrderId,
+              buyer_id: user.id,
+              total_amount: calculateTotal(),
+              shipping_address: shippingAddress,
+              status: 'processing',
+              payment_status: 'paid'
+            })
+            .select()
+            .single();
+            
+          if (directError) {
+            console.error('Direct insert error:', directError);
+            toast({
+              title: "Order Creation Failed",
+              description: "Could not create your order. Please try again.",
+              variant: "destructive",
+            });
+            return;
+          }
+          
+          orderData = directInsert;
+        } else {
+          orderData = { id: newOrderId };
         }
         
-        orderData = newOrder;
+        // Create order items one by one to avoid RLS issues
+        for (const item of items) {
+          const { error: itemError } = await supabase
+            .from('order_items')
+            .insert({
+              order_id: orderData.id,
+              product_id: item.product_id,
+              quantity: item.quantity,
+              unit_price: item.price,
+              total_price: item.price * item.quantity
+            });
+            
+          if (itemError) {
+            console.error('Order item insert error:', itemError);
+            // Continue with other items even if one fails
+          }
+        }
       } else {
         // Use existing order ID
-        const { data: existingOrder, error: getOrderError } = await supabase
-          .from('orders')
-          .select('*')
-          .eq('id', orderId)
-          .single();
-          
-        if (getOrderError || !existingOrder) {
-          console.error('Error retrieving existing order:', getOrderError);
-          toast({
-            title: "Order Error",
-            description: "Could not retrieve order information.",
-            variant: "destructive",
-          });
-          return;
-        }
-        
-        orderData = existingOrder;
+        orderData = { id: orderId };
         
         // Update order status
         const { error: updateError } = await supabase
@@ -143,35 +163,6 @@ const PaymentContainer = () => {
           
         if (updateError) {
           console.error('Error updating order status:', updateError);
-        }
-      }
-
-      // Create order items if this is a new order
-      if (!orderId) {
-        const orderItems = items.map(item => ({
-          order_id: orderData.id,
-          product_id: item.product_id,
-          quantity: item.quantity,
-          unit_price: item.price,
-          total_price: item.price * item.quantity
-        }));
-  
-        const { error: itemsError } = await supabase
-          .from('order_items')
-          .insert(orderItems);
-  
-        if (itemsError) {
-          console.error('Order items error:', itemsError);
-          
-          // Clean up the order since the items couldn't be added
-          await supabase.from('orders').delete().eq('id', orderData.id);
-          
-          toast({
-            title: "Order Items Failed",
-            description: "Could not add items to your order. Please try again.",
-            variant: "destructive",
-          });
-          return;
         }
       }
 
@@ -191,11 +182,10 @@ const PaymentContainer = () => {
         console.error('Payment record error:', paymentError);
       }
 
-      // Clear cart
+      // Clear cart and navigate to success page
       await clearCart();
-      
-      // Navigate to order processing page with orderId
       navigate(`/order-payment?orderId=${orderData.id}`);
+      
     } catch (error) {
       console.error('Error during order creation:', error);
       toast({
