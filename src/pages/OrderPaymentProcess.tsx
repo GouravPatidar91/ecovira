@@ -57,6 +57,7 @@ const OrderPaymentProcess = () => {
         }
         
         setOrderId(id);
+        console.log("Processing order ID:", id);
         
         // Get the session
         const { data } = await supabase.auth.getSession();
@@ -69,6 +70,8 @@ const OrderPaymentProcess = () => {
           return;
         }
 
+        console.log("User authenticated:", session.user.id);
+
         // Use the get_order_details RPC function to avoid RLS recursion
         const { data: orderData, error: orderError } = await supabase.rpc(
           'get_order_details',
@@ -79,17 +82,18 @@ const OrderPaymentProcess = () => {
         );
 
         if (orderError || !orderData || orderData.length === 0) {
-          console.error('Error fetching order:', orderError);
-          setError('Could not retrieve order details - not authorized');
+          console.error('Error fetching order via RPC:', orderError);
+          setError('Could not retrieve order details - not authorized or order not found');
           setPaymentStatus('failed');
           setIsProcessing(false);
           return;
         }
           
+        console.log("Order details fetched successfully:", orderData[0]);
         // Set the order details from the RPC result
         setOrderDetails(orderData[0]);
 
-        // Fetch order items separately (no RLS dependency)
+        // Fetch order items separately (this should work fine)
         const { data: orderItems, error: itemsError } = await supabase
           .from('order_items')
           .select(`
@@ -106,6 +110,7 @@ const OrderPaymentProcess = () => {
         if (itemsError) {
           console.error('Error fetching order items:', itemsError);
         } else {
+          console.log("Order items fetched:", orderItems);
           // Add order items to the order object
           setOrderDetails(prevState => {
             if (prevState) {
@@ -138,6 +143,8 @@ const OrderPaymentProcess = () => {
         throw new Error("Missing order details");
       }
       
+      console.log("Processing payment for order:", orderId);
+      
       // For demonstration, we'll assume a successful payment
       // You would integrate with a payment gateway here
       const isSuccessful = true; // In a real app, this would be the result from payment gateway
@@ -145,6 +152,7 @@ const OrderPaymentProcess = () => {
       if (isSuccessful) {
         // Update order status if not already paid
         if (orderDetails.payment_status !== 'paid') {
+          console.log("Updating order status to paid");
           const { error: updateError } = await supabase
             .from('orders')
             .update({ 
@@ -166,6 +174,7 @@ const OrderPaymentProcess = () => {
           .eq('order_id', orderId);
         
         if (orderItems && orderItems.length > 0) {
+          console.log("Updating product quantities for items:", orderItems);
           for (const item of orderItems) {
             try {
               const { error: updateStockError } = await supabase.functions.invoke(

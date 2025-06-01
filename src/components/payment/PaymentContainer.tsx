@@ -87,8 +87,9 @@ const PaymentContainer = () => {
       if (!orderId) {
         // Generate a UUID on the client-side to avoid RLS policy issues
         const newOrderId = crypto.randomUUID();
+        console.log("Creating new order with ID:", newOrderId);
 
-        // Use the create_order RPC function to bypass RLS
+        // Use the create_order RPC function to bypass RLS completely
         const { data, error } = await supabase.rpc(
           'create_order',
           { 
@@ -100,7 +101,7 @@ const PaymentContainer = () => {
         );
 
         if (error) {
-          console.error('Order creation error:', error);
+          console.error('Order creation error via RPC:', error);
           toast({
             title: "Order Creation Failed",
             description: "Could not create your order. Please try again.",
@@ -110,8 +111,9 @@ const PaymentContainer = () => {
         }
         
         orderData = { id: data || newOrderId };
+        console.log("Order created successfully:", orderData.id);
         
-        // Create order items one by one to avoid RLS issues
+        // Create order items using direct insert
         for (const item of items) {
           const { error: itemError } = await supabase
             .from('order_items')
@@ -131,8 +133,9 @@ const PaymentContainer = () => {
       } else {
         // Use existing order ID
         orderData = { id: orderId };
+        console.log("Using existing order ID:", orderId);
         
-        // Update order status
+        // Update order status using direct update (avoid RLS issues)
         const { error: updateError } = await supabase
           .from('orders')
           .update({ 
