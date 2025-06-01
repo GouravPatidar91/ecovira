@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Loader2, CheckCircle, AlertCircle } from "lucide-react";
@@ -11,13 +10,15 @@ import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 
 interface OrderItem {
+  id: string;
+  order_id: string;
+  product_id: string;
   quantity: number;
   unit_price: number;
-  product_id: string;
-  products?: {
-    name: string;
-    unit: string;
-  };
+  total_price: number;
+  created_at: string;
+  product_name: string;
+  product_unit: string;
 }
 
 interface OrderDetails {
@@ -93,22 +94,17 @@ const OrderPaymentProcess = () => {
         // Set the order details from the RPC result
         setOrderDetails(orderData[0]);
 
-        // Fetch order items separately (this should work fine)
-        const { data: orderItems, error: itemsError } = await supabase
-          .from('order_items')
-          .select(`
-            quantity,
-            unit_price,
-            product_id,
-            products (
-              name,
-              unit
-            )
-          `)
-          .eq('order_id', id);
+        // Fetch order items using the new RPC function to avoid RLS recursion
+        const { data: orderItems, error: itemsError } = await supabase.rpc(
+          'get_order_items',
+          {
+            p_order_id: id,
+            p_user_id: session.user.id
+          }
+        );
           
         if (itemsError) {
-          console.error('Error fetching order items:', itemsError);
+          console.error('Error fetching order items via RPC:', itemsError);
         } else {
           console.log("Order items fetched:", orderItems);
           // Add order items to the order object
@@ -167,15 +163,10 @@ const OrderPaymentProcess = () => {
           }
         }
         
-        // Update product stock for each item
-        const { data: orderItems } = await supabase
-          .from('order_items')
-          .select('product_id, quantity')
-          .eq('order_id', orderId);
-        
-        if (orderItems && orderItems.length > 0) {
-          console.log("Updating product quantities for items:", orderItems);
-          for (const item of orderItems) {
+        // Update product stock for each item using the RPC function results
+        if (orderDetails.order_items && orderDetails.order_items.length > 0) {
+          console.log("Updating product quantities for items:", orderDetails.order_items);
+          for (const item of orderDetails.order_items) {
             try {
               const { error: updateStockError } = await supabase.functions.invoke(
                 "update_product_quantity", 
@@ -283,7 +274,7 @@ const OrderPaymentProcess = () => {
                               {orderDetails.order_items.map((item: OrderItem, idx: number) => (
                                 <li key={idx} className="flex justify-between text-sm">
                                   <span>
-                                    {item.products?.name || 'Product'} ({item.quantity} {item.quantity === 1 ? item.products?.unit || 'unit' : `${item.products?.unit || 'unit'}s`})
+                                    {item.product_name || 'Product'} ({item.quantity} {item.quantity === 1 ? item.product_unit || 'unit' : `${item.product_unit || 'unit'}s`})
                                   </span>
                                   <span>${(item.unit_price * item.quantity).toFixed(2)}</span>
                                 </li>

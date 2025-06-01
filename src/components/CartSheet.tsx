@@ -104,23 +104,26 @@ export function CartSheet() {
       console.log("Order created successfully with ID:", orderResult || newOrderId);
       const finalOrderId = orderResult || newOrderId;
       
-      // 5. Create order items using direct insert (this table shouldn't have RLS issues)
+      // 5. Create order items using the new RPC function to avoid RLS recursion
       const orderItems = items.map(item => ({
-        order_id: finalOrderId,
         product_id: item.product_id,
         quantity: item.quantity,
         unit_price: item.price,
         total_price: item.price * item.quantity
       }));
       
-      console.log("Creating order items:", orderItems);
+      console.log("Creating order items via RPC:", orderItems);
       
-      const { error: itemsError } = await supabase
-        .from('order_items')
-        .insert(orderItems);
+      const { error: itemsError } = await supabase.rpc(
+        'create_order_items',
+        {
+          p_order_id: finalOrderId,
+          p_items: orderItems
+        }
+      );
 
       if (itemsError) {
-        console.error('Order items insertion error:', itemsError);
+        console.error('Order items creation error via RPC:', itemsError);
         throw new Error(`Failed to add items to your order: ${itemsError.message}`);
       }
 

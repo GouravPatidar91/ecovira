@@ -113,22 +113,27 @@ const PaymentContainer = () => {
         orderData = { id: data || newOrderId };
         console.log("Order created successfully:", orderData.id);
         
-        // Create order items using direct insert
-        for (const item of items) {
-          const { error: itemError } = await supabase
-            .from('order_items')
-            .insert({
-              order_id: orderData.id,
-              product_id: item.product_id,
-              quantity: item.quantity,
-              unit_price: item.price,
-              total_price: item.price * item.quantity
-            });
-            
-          if (itemError) {
-            console.error('Order item insert error:', itemError);
-            // Continue with other items even if one fails
+        // Create order items using the new RPC function to avoid RLS recursion
+        const orderItems = items.map(item => ({
+          product_id: item.product_id,
+          quantity: item.quantity,
+          unit_price: item.price,
+          total_price: item.price * item.quantity
+        }));
+        
+        console.log("Creating order items via RPC:", orderItems);
+        
+        const { error: itemsError } = await supabase.rpc(
+          'create_order_items',
+          {
+            p_order_id: orderData.id,
+            p_items: orderItems
           }
+        );
+        
+        if (itemsError) {
+          console.error('Order items creation error via RPC:', itemsError);
+          // Continue with payment processing even if this fails
         }
       } else {
         // Use existing order ID

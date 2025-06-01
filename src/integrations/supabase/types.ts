@@ -414,6 +414,10 @@ export type Database = {
         }
         Returns: string
       }
+      create_order_items: {
+        Args: { p_order_id: string; p_items: Json }
+        Returns: undefined
+      }
       get_conversation_messages: {
         Args: { conv_id: string }
         Returns: {
@@ -436,6 +440,20 @@ export type Database = {
           status: string
           payment_status: string
           created_at: string
+        }[]
+      }
+      get_order_items: {
+        Args: { p_order_id: string; p_user_id: string }
+        Returns: {
+          id: string
+          order_id: string
+          product_id: string
+          quantity: number
+          unit_price: number
+          total_price: number
+          created_at: string
+          product_name: string
+          product_unit: string
         }[]
       }
       user_is_seller_for_order: {
