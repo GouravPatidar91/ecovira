@@ -35,17 +35,10 @@ const SellerDashboard = () => {
         // Get viewed orders from localStorage
         const viewedOrders = new Set(JSON.parse(localStorage.getItem("viewedOrders") || "[]"));
         
-        // Get all orders with their items and products
+        // Get all pending orders
         const { data: allOrders, error } = await supabase
           .from('orders')
-          .select(`
-            id,
-            status,
-            created_at,
-            order_items(
-              product:products(seller_id)
-            )
-          `)
+          .select('id, status, created_at')
           .eq('status', 'pending') // Only show pending orders that need review
           .order('created_at', { ascending: false });
 
@@ -68,17 +61,35 @@ const SellerDashboard = () => {
           return;
         }
         
-        // Filter orders to only include those with products from this seller
-        // and that haven't been viewed yet
-        const newOrders = allOrders.filter(order => 
-          order && 
-          !viewedOrders.has(order.id) && 
-          order.order_items && 
-          order.order_items.some(item => item.product?.seller_id === user.id)
-        ) || [];
+        // Check which orders belong to this seller and haven't been viewed
+        let sellerOrdersCount = 0;
         
-        console.log('New unviewed orders for this seller:', newOrders.length);
-        setNewOrdersCount(newOrders.length);
+        for (const order of allOrders) {
+          if (viewedOrders.has(order.id)) {
+            continue; // Skip viewed orders
+          }
+          
+          try {
+            // Check if this order has items from this seller using RPC
+            const { data: orderDetails, error: detailsError } = await supabase.rpc(
+              'get_order_details',
+              {
+                p_order_id: order.id,
+                p_user_id: user.id
+              }
+            );
+
+            if (!detailsError && orderDetails && orderDetails.length > 0) {
+              // This order belongs to this seller
+              sellerOrdersCount++;
+            }
+          } catch (error) {
+            console.error('Error checking order:', order.id, error);
+          }
+        }
+        
+        console.log('New unviewed orders for this seller:', sellerOrdersCount);
+        setNewOrdersCount(sellerOrdersCount);
       } catch (error) {
         console.error('Error getting new orders count:', error);
       } finally {

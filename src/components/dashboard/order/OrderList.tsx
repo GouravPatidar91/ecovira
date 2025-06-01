@@ -48,10 +48,8 @@ interface Order {
   order_items: {
     id: string;
     quantity: number;
-    product: {
-      name: string;
-      unit: string;
-    };
+    product_name: string;
+    product_unit: string;
   }[];
   is_new?: boolean;
 }
@@ -111,34 +109,86 @@ const OrderList = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      // First get all orders
+      console.log('Fetching orders for seller:', user.id);
+
+      // Get all orders using get_order_details RPC
       const { data: allOrders, error: ordersError } = await supabase
         .from('orders')
-        .select(`
-          *,
-          buyer:profiles!orders_buyer_id_fkey(id, full_name),
-          order_items(
-            id,
-            quantity,
-            product:products(name, unit, seller_id)
-          )
-        `)
+        .select('id, buyer_id, status, created_at')
         .order('created_at', { ascending: false });
 
-      if (ordersError) throw ordersError;
+      if (ordersError) {
+        console.error('Error fetching basic orders:', ordersError);
+        throw ordersError;
+      }
 
-      // Filter orders to only include those with products from this seller
-      const sellerOrders = allOrders?.filter(order => 
-        order.order_items.some(item => item.product?.seller_id === user.id)
-      ) || [];
+      console.log('Retrieved basic orders:', allOrders?.length);
 
-      // Mark orders that haven't been viewed yet
-      const ordersWithNewFlag = sellerOrders.map(order => ({
-        ...order,
-        is_new: !viewedOrders.has(order.id)
-      }));
+      if (!allOrders || allOrders.length === 0) {
+        setOrders([]);
+        return;
+      }
 
-      setOrders(ordersWithNewFlag);
+      // Filter and fetch detailed orders for this seller
+      const sellerOrdersWithDetails = [];
+
+      for (const basicOrder of allOrders) {
+        try {
+          // Get detailed order info using RPC
+          const { data: orderDetails, error: detailsError } = await supabase.rpc(
+            'get_order_details',
+            {
+              p_order_id: basicOrder.id,
+              p_user_id: user.id
+            }
+          );
+
+          if (detailsError || !orderDetails || orderDetails.length === 0) {
+            // This order doesn't belong to this seller, skip it
+            continue;
+          }
+
+          // Get order items using RPC
+          const { data: orderItems, error: itemsError } = await supabase.rpc(
+            'get_order_items',
+            {
+              p_order_id: basicOrder.id,
+              p_user_id: user.id
+            }
+          );
+
+          if (itemsError) {
+            console.error('Error fetching order items:', itemsError);
+            continue;
+          }
+
+          // Get buyer profile
+          const { data: buyerProfile, error: buyerError } = await supabase
+            .from('profiles')
+            .select('id, full_name')
+            .eq('id', basicOrder.buyer_id)
+            .single();
+
+          if (buyerError) {
+            console.error('Error fetching buyer profile:', buyerError);
+          }
+
+          const orderWithDetails = {
+            ...orderDetails[0],
+            buyer: buyerProfile || { id: basicOrder.buyer_id, full_name: 'Unknown' },
+            order_items: orderItems || [],
+            is_new: !viewedOrders.has(basicOrder.id)
+          };
+
+          sellerOrdersWithDetails.push(orderWithDetails);
+        } catch (error) {
+          console.error('Error processing order:', basicOrder.id, error);
+          continue;
+        }
+      }
+
+      console.log('Filtered orders for seller:', sellerOrdersWithDetails.length);
+      setOrders(sellerOrdersWithDetails);
     } catch (error) {
       console.error('Error fetching orders:', error);
       toast({
@@ -298,14 +348,12 @@ const OrderList = () => {
                   </TableCell>
                   <TableCell>
                     <div className="space-y-1">
-                      {order.order_items
-                        .filter((item) => item.product)
-                        .map((item) => (
-                          <div key={item.id} className="text-sm">
-                            <span className="font-medium">{item.quantity}x</span> {item.product.name}
-                            <span className="text-gray-500 ml-1">({item.product.unit})</span>
-                          </div>
-                        ))}
+                      {order.order_items.map((item) => (
+                        <div key={item.id} className="text-sm">
+                          <span className="font-medium">{item.quantity}x</span> {item.product_name}
+                          <span className="text-gray-500 ml-1">({item.product_unit})</span>
+                        </div>
+                      ))}
                     </div>
                   </TableCell>
                   <TableCell>
