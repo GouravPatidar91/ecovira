@@ -31,6 +31,47 @@ export function CartSheet() {
     }
   };
 
+  const notifySellers = async (orderId: string, orderItems: any[]) => {
+    try {
+      // Group items by seller
+      const sellerGroups: { [sellerId: string]: any[] } = {};
+      
+      for (const item of orderItems) {
+        // Get product details to find seller
+        const { data: product } = await supabase
+          .from('products')
+          .select('seller_id, name')
+          .eq('id', item.product_id)
+          .single();
+          
+        if (product && product.seller_id) {
+          if (!sellerGroups[product.seller_id]) {
+            sellerGroups[product.seller_id] = [];
+          }
+          sellerGroups[product.seller_id].push({
+            ...item,
+            product_name: product.name
+          });
+        }
+      }
+      
+      // Create notifications for each seller
+      for (const sellerId of Object.keys(sellerGroups)) {
+        const sellerItems = sellerGroups[sellerId];
+        const itemNames = sellerItems.map(item => `${item.quantity}x ${item.product_name}`).join(', ');
+        
+        // Insert notification record (you could create a notifications table)
+        // For now, we'll just log it and rely on the real-time subscription
+        console.log(`Notifying seller ${sellerId} about order ${orderId} with items: ${itemNames}`);
+        
+        // The seller dashboard will pick up the new order through real-time subscription
+        // and show it in their orders list automatically
+      }
+    } catch (error) {
+      console.error('Error notifying sellers:', error);
+    }
+  };
+
   const handlePlaceOrder = async () => {
     if (!shippingAddress.trim()) {
       toast({
@@ -127,7 +168,10 @@ export function CartSheet() {
         throw new Error(`Failed to add items to your order: ${itemsError.message}`);
       }
 
-      // 6. Order created successfully
+      // 6. Notify sellers about the new order
+      await notifySellers(finalOrderId, orderItems);
+
+      // 7. Order created successfully
       console.log("Order completed successfully");
       await clearCart();
       setIsCheckoutDialogOpen(false);
@@ -135,11 +179,11 @@ export function CartSheet() {
       
       toast({
         title: "Order Placed Successfully",
-        description: "Your order has been created and is ready for payment",
+        description: "Your order has been sent to the sellers for approval. You'll be notified once they respond.",
       });
       
-      // Navigate to payment processing page
-      navigate(`/payment?address=${encodeURIComponent(shippingAddress)}`);
+      // Navigate to a confirmation page instead of payment
+      navigate(`/order-confirmation?orderId=${finalOrderId}`);
       
     } catch (error) {
       console.error('Order placement error:', error);
@@ -253,7 +297,7 @@ export function CartSheet() {
                 onClick={() => setIsCheckoutDialogOpen(true)}
                 disabled={items.length === 0}
               >
-                Place Order
+                Request Order
               </Button>
             </div>
           </div>
@@ -263,9 +307,9 @@ export function CartSheet() {
       <AlertDialog open={isCheckoutDialogOpen} onOpenChange={setIsCheckoutDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Complete your order</AlertDialogTitle>
+            <AlertDialogTitle>Request your order</AlertDialogTitle>
             <AlertDialogDescription>
-              Please provide your shipping address to place your order. The sellers will review your order and confirm availability.
+              Please provide your shipping address to request your order. The sellers will review your request and either accept or decline it.
             </AlertDialogDescription>
           </AlertDialogHeader>
           
@@ -297,7 +341,7 @@ export function CartSheet() {
                   Processing
                 </>
               ) : (
-                'Place Order'
+                'Send Order Request'
               )}
             </AlertDialogAction>
           </AlertDialogFooter>

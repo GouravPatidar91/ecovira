@@ -24,6 +24,8 @@ import {
   Loader2, 
   User,
   MapPin,
+  CheckCircle,
+  XCircle,
 } from "lucide-react";
 import {
   Tooltip,
@@ -78,6 +80,10 @@ const OrderList = () => {
         (payload) => {
           if (payload.eventType === 'INSERT') {
             fetchOrders();
+            toast({
+              title: "New Order Request",
+              description: "You have received a new order request from a customer!",
+            });
           } else if (payload.eventType === 'UPDATE' && payload.new && payload.old) {
             setOrders(prevOrders => 
               prevOrders.map(order => 
@@ -94,7 +100,7 @@ const OrderList = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, []);
+  }, [toast]);
 
   useEffect(() => {
     localStorage.setItem("viewedOrders", JSON.stringify(Array.from(viewedOrders)));
@@ -158,47 +164,29 @@ const OrderList = () => {
         order.id === orderId ? { ...order, status } : order
       ));
 
-      // If order is being approved (set to processing), notify the buyer
+      // Show different messages based on action
       if (status === 'processing') {
-        await notifyBuyerOrderAccepted(orderId);
+        toast({
+          title: "Order Accepted",
+          description: "Order has been accepted and the buyer will be notified. They can now proceed to payment.",
+        });
+      } else if (status === 'cancelled') {
+        toast({
+          title: "Order Declined",
+          description: "Order has been declined and the buyer will be notified.",
+        });
+      } else {
+        toast({
+          title: "Success",
+          description: "Order status updated successfully",
+        });
       }
-
-      toast({
-        title: "Success",
-        description: status === 'processing' 
-          ? "Order approved and buyer notified" 
-          : "Order status updated successfully",
-      });
     } catch (error) {
       toast({
         title: "Error",
         description: "Failed to update order status",
         variant: "destructive",
       });
-    }
-  };
-
-  const notifyBuyerOrderAccepted = async (orderId: string) => {
-    try {
-      // Get order to find the buyer
-      const { data: order } = await supabase
-        .from('orders')
-        .select('buyer_id')
-        .eq('id', orderId)
-        .single();
-
-      if (!order) return;
-
-      // Here you would implement your notification system
-      // For now we'll just console.log it
-      console.log(`Notifying buyer ${order.buyer_id} that order ${orderId} has been accepted`);
-
-      // In a real app, you might:
-      // 1. Send an email
-      // 2. Send a push notification
-      // 3. Add an entry to a notifications table
-    } catch (error) {
-      console.error('Error notifying buyer:', error);
     }
   };
 
@@ -216,11 +204,11 @@ const OrderList = () => {
 
   const getStatusBadgeColor = (status: string) => {
     switch (status) {
-      case 'pending': return 'bg-yellow-100 text-yellow-800';
-      case 'processing': return 'bg-blue-100 text-blue-800';
-      case 'completed': return 'bg-green-100 text-green-800';
-      case 'cancelled': return 'bg-red-100 text-red-800';
-      default: return 'bg-gray-100 text-gray-800';
+      case 'pending': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+      case 'processing': return 'bg-blue-100 text-blue-800 border-blue-200';
+      case 'completed': return 'bg-green-100 text-green-800 border-green-200';
+      case 'cancelled': return 'bg-red-100 text-red-800 border-red-200';
+      default: return 'bg-gray-100 text-gray-800 border-gray-200';
     }
   };
 
@@ -250,26 +238,29 @@ const OrderList = () => {
             {orders.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={6} className="text-center py-8 text-gray-500">
-                  No orders found
+                  No order requests found
                 </TableCell>
               </TableRow>
             ) : (
               orders.map((order) => (
                 <TableRow 
                   key={order.id} 
-                  className={order.is_new ? "bg-market-50" : ""}
+                  className={order.is_new ? "bg-market-50 border-l-4 border-l-market-500" : ""}
                   onClick={() => {
                     if (order.is_new) markOrderAsViewed(order.id);
                   }}
                 >
                   <TableCell className="font-medium">
                     <div className="flex items-center">
-                      {order.id.slice(0, 8)}
+                      <span className="font-mono text-sm">#{order.id.slice(0, 8)}</span>
                       {order.is_new && (
-                        <Badge className="ml-2 bg-market-100 text-market-800">
-                          New
+                        <Badge className="ml-2 bg-market-600 text-white">
+                          New Request
                         </Badge>
                       )}
+                    </div>
+                    <div className="text-xs text-gray-500 mt-1">
+                      {new Date(order.created_at).toLocaleDateString()}
                     </div>
                   </TableCell>
                   <TableCell>
@@ -279,7 +270,7 @@ const OrderList = () => {
                           <div className="flex flex-col">
                             <div className="flex items-center">
                               <User className="h-4 w-4 mr-1 text-gray-500" />
-                              <span>{order.buyer?.full_name || 'Unknown'}</span>
+                              <span className="font-medium">{order.buyer?.full_name || 'Unknown'}</span>
                             </div>
                             {order.shipping_address && (
                               <div className="flex items-center text-xs text-gray-500 mt-1">
@@ -295,7 +286,10 @@ const OrderList = () => {
                           <div className="p-2">
                             <div className="font-medium">{order.buyer?.full_name}</div>
                             {order.shipping_address && (
-                              <div className="text-sm">{order.shipping_address}</div>
+                              <div className="text-sm mt-1">
+                                <strong>Delivery to:</strong><br />
+                                {order.shipping_address}
+                              </div>
                             )}
                           </div>
                         </TooltipContent>
@@ -303,18 +297,26 @@ const OrderList = () => {
                     </TooltipProvider>
                   </TableCell>
                   <TableCell>
-                    {order.order_items
-                      .filter((item) => item.product) // Only show items with product data
-                      .map((item) => (
-                        <div key={item.id} className="text-sm">
-                          {item.quantity} x {item.product.name} ({item.product.unit})
-                        </div>
-                      ))}
+                    <div className="space-y-1">
+                      {order.order_items
+                        .filter((item) => item.product)
+                        .map((item) => (
+                          <div key={item.id} className="text-sm">
+                            <span className="font-medium">{item.quantity}x</span> {item.product.name}
+                            <span className="text-gray-500 ml-1">({item.product.unit})</span>
+                          </div>
+                        ))}
+                    </div>
                   </TableCell>
-                  <TableCell>${order.total_amount?.toFixed(2)}</TableCell>
                   <TableCell>
-                    <Badge className={getStatusBadgeColor(order.status || 'pending')}>
-                      {order.status || 'pending'}
+                    <span className="font-medium text-lg">${order.total_amount?.toFixed(2)}</span>
+                  </TableCell>
+                  <TableCell>
+                    <Badge className={`border ${getStatusBadgeColor(order.status || 'pending')}`}>
+                      {order.status === 'pending' ? 'Awaiting Response' : 
+                       order.status === 'processing' ? 'Accepted' :
+                       order.status === 'cancelled' ? 'Declined' :
+                       order.status || 'pending'}
                     </Badge>
                   </TableCell>
                   <TableCell>
@@ -323,17 +325,19 @@ const OrderList = () => {
                         <Button 
                           variant="default"
                           size="sm"
-                          className="bg-green-600 hover:bg-green-700"
+                          className="bg-green-600 hover:bg-green-700 text-white"
                           onClick={() => updateOrderStatus(order.id, 'processing')}
                         >
-                          Accept Order
+                          <CheckCircle className="h-4 w-4 mr-1" />
+                          Accept
                         </Button>
                         <Button
                           variant="outline"
                           size="sm"
-                          className="text-red-500"
+                          className="text-red-600 border-red-200 hover:bg-red-50"
                           onClick={() => updateOrderStatus(order.id, 'cancelled')}
                         >
+                          <XCircle className="h-4 w-4 mr-1" />
                           Decline
                         </Button>
                       </div>
@@ -342,14 +346,14 @@ const OrderList = () => {
                         value={order.status || 'pending'}
                         onValueChange={(value) => updateOrderStatus(order.id, value)}
                       >
-                        <SelectTrigger className="w-32">
+                        <SelectTrigger className="w-36">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="pending">Pending</SelectItem>
-                          <SelectItem value="processing">Processing</SelectItem>
+                          <SelectItem value="processing">Accepted</SelectItem>
                           <SelectItem value="completed">Completed</SelectItem>
-                          <SelectItem value="cancelled">Cancelled</SelectItem>
+                          <SelectItem value="cancelled">Declined</SelectItem>
                         </SelectContent>
                       </Select>
                     )}
