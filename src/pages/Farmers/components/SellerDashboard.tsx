@@ -14,7 +14,6 @@ const SellerDashboard = () => {
   const { toast } = useToast();
 
   useEffect(() => {
-    // Get orders that the seller hasn't viewed yet
     const getNewOrdersCount = async () => {
       try {
         setIsLoading(true);
@@ -30,66 +29,77 @@ const SellerDashboard = () => {
           return;
         }
 
-        console.log('Fetching orders for seller:', user.id);
+        console.log('Fetching new orders count for seller:', user.id);
         
         // Get viewed orders from localStorage
         const viewedOrders = new Set(JSON.parse(localStorage.getItem("viewedOrders") || "[]"));
         
-        // Get all pending orders
-        const { data: allOrders, error } = await supabase
-          .from('orders')
-          .select('id, status, created_at')
-          .eq('status', 'pending') // Only show pending orders that need review
-          .order('created_at', { ascending: false });
+        // Get seller's products first
+        const { data: sellerProducts } = await supabase
+          .from('products')
+          .select('id')
+          .eq('seller_id', user.id);
 
-        if (error) {
-          console.error('Error fetching orders:', error);
-          toast({
-            title: "Error",
-            description: "Failed to load new orders",
-            variant: "destructive",
-          });
-          return;
-        }
-
-        console.log('Retrieved orders:', allOrders);
-        
-        if (!allOrders || allOrders.length === 0) {
-          console.log('No orders found');
+        if (!sellerProducts || sellerProducts.length === 0) {
+          console.log('No products found for seller');
           setNewOrdersCount(0);
-          setIsLoading(false);
           return;
         }
+
+        const productIds = sellerProducts.map(p => p.id);
+
+        // Get order items that contain this seller's products
+        const { data: relevantOrderItems, error: itemsError } = await supabase
+          .from('order_items')
+          .select('order_id')
+          .in('product_id', productIds);
+
+        if (itemsError) {
+          console.error('Error fetching order items:', itemsError);
+          setNewOrdersCount(0);
+          return;
+        }
+
+        if (!relevantOrderItems || relevantOrderItems.length === 0) {
+          console.log('No order items found for seller products');
+          setNewOrdersCount(0);
+          return;
+        }
+
+        // Get unique order IDs
+        const orderIds = [...new Set(relevantOrderItems.map(item => item.order_id))];
         
-        // Check which orders belong to this seller and haven't been viewed
-        let sellerOrdersCount = 0;
+        // Count how many of these orders are pending and unviewed
+        let newOrdersCount = 0;
         
-        for (const order of allOrders) {
-          if (viewedOrders.has(order.id)) {
+        for (const orderId of orderIds) {
+          if (viewedOrders.has(orderId)) {
             continue; // Skip viewed orders
           }
           
           try {
-            // Check if this order has items from this seller using RPC
+            // Check if this order is pending using RPC
             const { data: orderDetails, error: detailsError } = await supabase.rpc(
               'get_order_details',
               {
-                p_order_id: order.id,
+                p_order_id: orderId,
                 p_user_id: user.id
               }
             );
 
             if (!detailsError && orderDetails && orderDetails.length > 0) {
-              // This order belongs to this seller
-              sellerOrdersCount++;
+              const order = orderDetails[0];
+              if (order.status === 'pending') {
+                newOrdersCount++;
+              }
             }
           } catch (error) {
-            console.error('Error checking order:', order.id, error);
+            console.error('Error checking order:', orderId, error);
           }
         }
         
-        console.log('New unviewed orders for this seller:', sellerOrdersCount);
-        setNewOrdersCount(sellerOrdersCount);
+        console.log('New unviewed pending orders for this seller:', newOrdersCount);
+        setNewOrdersCount(newOrdersCount);
       } catch (error) {
         console.error('Error getting new orders count:', error);
       } finally {

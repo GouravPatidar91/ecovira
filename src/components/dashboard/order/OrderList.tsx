@@ -76,6 +76,7 @@ const OrderList = () => {
           table: 'orders'
         },
         (payload) => {
+          console.log('Order update received:', payload);
           if (payload.eventType === 'INSERT') {
             fetchOrders();
             toast({
@@ -83,10 +84,11 @@ const OrderList = () => {
               description: "You have received a new order request from a customer!",
             });
           } else if (payload.eventType === 'UPDATE' && payload.new && payload.old) {
+            // Update the specific order in state
             setOrders(prevOrders => 
               prevOrders.map(order => 
                 order.id === payload.new.id 
-                  ? { ...order, ...payload.new } 
+                  ? { ...order, status: payload.new.status, payment_status: payload.new.payment_status } 
                   : order
               )
             );
@@ -106,59 +108,82 @@ const OrderList = () => {
 
   const fetchOrders = async () => {
     try {
+      setIsLoading(true);
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      console.log('Fetching orders for seller:', user.id);
-
-      // Get all orders using get_order_details RPC
-      const { data: allOrders, error: ordersError } = await supabase
-        .from('orders')
-        .select('id, buyer_id, status, created_at')
-        .order('created_at', { ascending: false });
-
-      if (ordersError) {
-        console.error('Error fetching basic orders:', ordersError);
-        throw ordersError;
-      }
-
-      console.log('Retrieved basic orders:', allOrders?.length);
-
-      if (!allOrders || allOrders.length === 0) {
+      if (!user) {
+        console.log('No authenticated user found');
         setOrders([]);
         return;
       }
 
-      // Filter and fetch detailed orders for this seller
-      const sellerOrdersWithDetails = [];
+      console.log('Fetching orders for seller:', user.id);
 
-      for (const basicOrder of allOrders) {
+      // First, get all order IDs by checking which orders have products from this seller
+      // We'll use a different approach to avoid RLS issues
+      const { data: sellerProducts } = await supabase
+        .from('products')
+        .select('id')
+        .eq('seller_id', user.id);
+
+      if (!sellerProducts || sellerProducts.length === 0) {
+        console.log('No products found for seller');
+        setOrders([]);
+        return;
+      }
+
+      const productIds = sellerProducts.map(p => p.id);
+
+      // Get order items that contain this seller's products
+      const { data: relevantOrderItems, error: itemsError } = await supabase
+        .from('order_items')
+        .select('order_id')
+        .in('product_id', productIds);
+
+      if (itemsError) {
+        console.error('Error fetching order items:', itemsError);
+        throw itemsError;
+      }
+
+      if (!relevantOrderItems || relevantOrderItems.length === 0) {
+        console.log('No order items found for seller products');
+        setOrders([]);
+        return;
+      }
+
+      // Get unique order IDs
+      const orderIds = [...new Set(relevantOrderItems.map(item => item.order_id))];
+      console.log('Found relevant order IDs:', orderIds.length);
+
+      // Now fetch detailed information for each order using RPC functions
+      const ordersWithDetails = [];
+
+      for (const orderId of orderIds) {
         try {
-          // Get detailed order info using RPC
+          // Get order details using RPC
           const { data: orderDetails, error: detailsError } = await supabase.rpc(
             'get_order_details',
             {
-              p_order_id: basicOrder.id,
+              p_order_id: orderId,
               p_user_id: user.id
             }
           );
 
           if (detailsError || !orderDetails || orderDetails.length === 0) {
-            // This order doesn't belong to this seller, skip it
+            console.log('No details found for order:', orderId);
             continue;
           }
 
           // Get order items using RPC
-          const { data: orderItems, error: itemsError } = await supabase.rpc(
+          const { data: orderItems, error: itemsRpcError } = await supabase.rpc(
             'get_order_items',
             {
-              p_order_id: basicOrder.id,
+              p_order_id: orderId,
               p_user_id: user.id
             }
           );
 
-          if (itemsError) {
-            console.error('Error fetching order items:', itemsError);
+          if (itemsRpcError) {
+            console.error('Error fetching order items via RPC:', itemsRpcError);
             continue;
           }
 
@@ -166,7 +191,7 @@ const OrderList = () => {
           const { data: buyerProfile, error: buyerError } = await supabase
             .from('profiles')
             .select('id, full_name')
-            .eq('id', basicOrder.buyer_id)
+            .eq('id', orderDetails[0].buyer_id)
             .single();
 
           if (buyerError) {
@@ -175,25 +200,28 @@ const OrderList = () => {
 
           const orderWithDetails = {
             ...orderDetails[0],
-            buyer: buyerProfile || { id: basicOrder.buyer_id, full_name: 'Unknown' },
+            buyer: buyerProfile || { id: orderDetails[0].buyer_id, full_name: 'Unknown' },
             order_items: orderItems || [],
-            is_new: !viewedOrders.has(basicOrder.id)
+            is_new: !viewedOrders.has(orderId)
           };
 
-          sellerOrdersWithDetails.push(orderWithDetails);
+          ordersWithDetails.push(orderWithDetails);
         } catch (error) {
-          console.error('Error processing order:', basicOrder.id, error);
+          console.error('Error processing order:', orderId, error);
           continue;
         }
       }
 
-      console.log('Filtered orders for seller:', sellerOrdersWithDetails.length);
-      setOrders(sellerOrdersWithDetails);
+      // Sort orders by creation date (newest first)
+      ordersWithDetails.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+      console.log('Successfully fetched orders for seller:', ordersWithDetails.length);
+      setOrders(ordersWithDetails);
     } catch (error) {
       console.error('Error fetching orders:', error);
       toast({
         title: "Error",
-        description: "Failed to load orders",
+        description: "Failed to load orders. Please try refreshing the page.",
         variant: "destructive",
       });
     } finally {
@@ -232,6 +260,7 @@ const OrderList = () => {
         });
       }
     } catch (error) {
+      console.error('Error updating order status:', error);
       toast({
         title: "Error",
         description: "Failed to update order status",
