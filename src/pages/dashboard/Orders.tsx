@@ -13,40 +13,28 @@ const Orders = () => {
   const { toast } = useToast();
 
   useEffect(() => {
-    // Get current user ID
     const getCurrentUserAndSubscribe = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      // Count pending orders
+      // Count pending orders with the corrected RLS policies
       const countPendingOrders = async () => {
-        // Get viewed orders from localStorage
         const viewedOrders = new Set(JSON.parse(localStorage.getItem("viewedOrders") || "[]"));
         
-        // Get all orders
-        const { data: allOrders } = await supabase
+        const { data: pendingOrders } = await supabase
           .from('orders')
-          .select(`
-            id,
-            order_items(
-              product:products(seller_id)
-            )
-          `)
-          .eq('status', 'pending')
-          .order('created_at', { ascending: false });
+          .select('id')
+          .eq('status', 'pending');
 
-        if (!allOrders) return;
+        if (!pendingOrders) return;
         
-        // Filter orders to only include those with products from this seller
-        // and that haven't been viewed yet
-        const pendingOrders = allOrders.filter(order => 
-          !viewedOrders.has(order.id) && 
-          order.order_items.some(item => item.product?.seller_id === user.id)
-        );
+        // Filter orders that haven't been viewed yet
+        const newOrdersCount = pendingOrders.filter(order => 
+          !viewedOrders.has(order.id)
+        ).length;
         
-        const count = pendingOrders.length;
-        setNewOrders(count);
-        setShowAlert(count > 0);
+        setNewOrders(newOrdersCount);
+        setShowAlert(newOrdersCount > 0);
       };
 
       countPendingOrders();
@@ -62,32 +50,13 @@ const Orders = () => {
             table: 'orders'
           },
           (payload) => {
-            // Check if order items contain products from this seller
-            const checkOrderProducts = async () => {
-              const { data: orderItems } = await supabase
-                .from('order_items')
-                .select(`
-                  product:products(seller_id)
-                `)
-                .eq('order_id', payload.new.id);
-
-              // Check if any of the products in this order belongs to the current seller
-              const isSellerOrder = orderItems?.some(item => 
-                item.product?.seller_id === user.id
-              );
-
-              if (isSellerOrder) {
-                setNewOrders(prev => prev + 1);
-                setShowAlert(true);
-                
-                toast({
-                  title: "New Order Received",
-                  description: "You have a new order from a customer",
-                });
-              }
-            };
-
-            checkOrderProducts();
+            setNewOrders(prev => prev + 1);
+            setShowAlert(true);
+            
+            toast({
+              title: "New Order Received",
+              description: "You have a new order from a customer",
+            });
           }
         )
         .subscribe();

@@ -34,69 +34,28 @@ const SellerDashboard = () => {
         // Get viewed orders from localStorage
         const viewedOrders = new Set(JSON.parse(localStorage.getItem("viewedOrders") || "[]"));
         
-        // Get seller's products first
-        const { data: sellerProducts } = await supabase
-          .from('products')
-          .select('id')
-          .eq('seller_id', user.id);
+        // Now we can directly query orders with the fixed RLS policies
+        const { data: sellerOrders, error: ordersError } = await supabase
+          .from('orders')
+          .select('id, status')
+          .eq('status', 'pending');
 
-        if (!sellerProducts || sellerProducts.length === 0) {
-          console.log('No products found for seller');
+        if (ordersError) {
+          console.error('Error fetching orders:', ordersError);
           setNewOrdersCount(0);
           return;
         }
 
-        const productIds = sellerProducts.map(p => p.id);
-
-        // Get order items that contain this seller's products
-        const { data: relevantOrderItems, error: itemsError } = await supabase
-          .from('order_items')
-          .select('order_id')
-          .in('product_id', productIds);
-
-        if (itemsError) {
-          console.error('Error fetching order items:', itemsError);
+        if (!sellerOrders || sellerOrders.length === 0) {
+          console.log('No pending orders found for seller');
           setNewOrdersCount(0);
           return;
         }
 
-        if (!relevantOrderItems || relevantOrderItems.length === 0) {
-          console.log('No order items found for seller products');
-          setNewOrdersCount(0);
-          return;
-        }
-
-        // Get unique order IDs
-        const orderIds = [...new Set(relevantOrderItems.map(item => item.order_id))];
-        
-        // Count how many of these orders are pending and unviewed
-        let newOrdersCount = 0;
-        
-        for (const orderId of orderIds) {
-          if (viewedOrders.has(orderId)) {
-            continue; // Skip viewed orders
-          }
-          
-          try {
-            // Check if this order is pending using RPC
-            const { data: orderDetails, error: detailsError } = await supabase.rpc(
-              'get_order_details',
-              {
-                p_order_id: orderId,
-                p_user_id: user.id
-              }
-            );
-
-            if (!detailsError && orderDetails && orderDetails.length > 0) {
-              const order = orderDetails[0];
-              if (order.status === 'pending') {
-                newOrdersCount++;
-              }
-            }
-          } catch (error) {
-            console.error('Error checking order:', orderId, error);
-          }
-        }
+        // Count unviewed pending orders
+        const newOrdersCount = sellerOrders.filter(order => 
+          !viewedOrders.has(order.id)
+        ).length;
         
         console.log('New unviewed pending orders for this seller:', newOrdersCount);
         setNewOrdersCount(newOrdersCount);

@@ -456,6 +456,10 @@ export type Database = {
           product_unit: string
         }[]
       }
+      is_seller_for_order: {
+        Args: { order_uuid: string }
+        Returns: boolean
+      }
       user_is_seller_for_order: {
         Args: { order_id: string }
         Returns: boolean

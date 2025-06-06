@@ -118,102 +118,69 @@ const OrderList = () => {
 
       console.log('Fetching orders for seller:', user.id);
 
-      // First, get all order IDs by checking which orders have products from this seller
-      // We'll use a different approach to avoid RLS issues
-      const { data: sellerProducts } = await supabase
-        .from('products')
-        .select('id')
-        .eq('seller_id', user.id);
+      // Now we can directly query orders with the fixed RLS policies
+      const { data: sellerOrders, error: ordersError } = await supabase
+        .from('orders')
+        .select(`
+          id,
+          created_at,
+          total_amount,
+          status,
+          payment_status,
+          shipping_address,
+          buyer_id,
+          order_items (
+            id,
+            quantity,
+            product_id,
+            products (
+              name,
+              unit
+            )
+          )
+        `)
+        .order('created_at', { ascending: false });
 
-      if (!sellerProducts || sellerProducts.length === 0) {
-        console.log('No products found for seller');
+      if (ordersError) {
+        console.error('Error fetching orders:', ordersError);
+        throw ordersError;
+      }
+
+      if (!sellerOrders || sellerOrders.length === 0) {
+        console.log('No orders found for seller');
         setOrders([]);
         return;
       }
 
-      const productIds = sellerProducts.map(p => p.id);
+      // Fetch buyer profiles for the orders
+      const buyerIds = [...new Set(sellerOrders.map(order => order.buyer_id))];
+      const { data: buyerProfiles, error: buyerError } = await supabase
+        .from('profiles')
+        .select('id, full_name')
+        .in('id', buyerIds);
 
-      // Get order items that contain this seller's products
-      const { data: relevantOrderItems, error: itemsError } = await supabase
-        .from('order_items')
-        .select('order_id')
-        .in('product_id', productIds);
-
-      if (itemsError) {
-        console.error('Error fetching order items:', itemsError);
-        throw itemsError;
+      if (buyerError) {
+        console.error('Error fetching buyer profiles:', buyerError);
       }
 
-      if (!relevantOrderItems || relevantOrderItems.length === 0) {
-        console.log('No order items found for seller products');
-        setOrders([]);
-        return;
-      }
-
-      // Get unique order IDs
-      const orderIds = [...new Set(relevantOrderItems.map(item => item.order_id))];
-      console.log('Found relevant order IDs:', orderIds.length);
-
-      // Now fetch detailed information for each order using RPC functions
-      const ordersWithDetails = [];
-
-      for (const orderId of orderIds) {
-        try {
-          // Get order details using RPC
-          const { data: orderDetails, error: detailsError } = await supabase.rpc(
-            'get_order_details',
-            {
-              p_order_id: orderId,
-              p_user_id: user.id
-            }
-          );
-
-          if (detailsError || !orderDetails || orderDetails.length === 0) {
-            console.log('No details found for order:', orderId);
-            continue;
-          }
-
-          // Get order items using RPC
-          const { data: orderItems, error: itemsRpcError } = await supabase.rpc(
-            'get_order_items',
-            {
-              p_order_id: orderId,
-              p_user_id: user.id
-            }
-          );
-
-          if (itemsRpcError) {
-            console.error('Error fetching order items via RPC:', itemsRpcError);
-            continue;
-          }
-
-          // Get buyer profile
-          const { data: buyerProfile, error: buyerError } = await supabase
-            .from('profiles')
-            .select('id, full_name')
-            .eq('id', orderDetails[0].buyer_id)
-            .single();
-
-          if (buyerError) {
-            console.error('Error fetching buyer profile:', buyerError);
-          }
-
-          const orderWithDetails = {
-            ...orderDetails[0],
-            buyer: buyerProfile || { id: orderDetails[0].buyer_id, full_name: 'Unknown' },
-            order_items: orderItems || [],
-            is_new: !viewedOrders.has(orderId)
-          };
-
-          ordersWithDetails.push(orderWithDetails);
-        } catch (error) {
-          console.error('Error processing order:', orderId, error);
-          continue;
-        }
-      }
-
-      // Sort orders by creation date (newest first)
-      ordersWithDetails.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+      // Transform the data
+      const ordersWithDetails = sellerOrders.map(order => ({
+        id: order.id,
+        created_at: order.created_at,
+        total_amount: order.total_amount,
+        status: order.status || 'pending',
+        payment_status: order.payment_status || 'pending',
+        shipping_address: order.shipping_address || '',
+        buyer: buyerProfiles?.find(buyer => buyer.id === order.buyer_id) || 
+               { id: order.buyer_id, full_name: 'Unknown' },
+        order_items: order.order_items?.map(item => ({
+          id: item.id,
+          quantity: item.quantity,
+          product_name: item.products?.name || 'Unknown Product',
+          product_unit: item.products?.unit || ''
+        })) || [],
+        is_new: !viewedOrders.has(order.id)
+      }));
 
       console.log('Successfully fetched orders for seller:', ordersWithDetails.length);
       setOrders(ordersWithDetails);
