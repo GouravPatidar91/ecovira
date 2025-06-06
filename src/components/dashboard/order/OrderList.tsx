@@ -34,6 +34,13 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 
+interface OrderItem {
+  id: string;
+  quantity: number;
+  product_name: string;
+  product_unit: string;
+}
+
 interface Order {
   id: string;
   created_at: string;
@@ -45,12 +52,7 @@ interface Order {
     full_name: string;
     id: string;
   };
-  order_items: {
-    id: string;
-    quantity: number;
-    product_name: string;
-    product_unit: string;
-  }[];
+  order_items: OrderItem[];
   is_new?: boolean;
 }
 
@@ -63,9 +65,9 @@ const OrderList = () => {
   );
 
   useEffect(() => {
-    fetchOrders();
+    fetchOrdersUsingFunction();
 
-    // Subscribe to order updates
+    // Subscribe to order changes
     const channel = supabase
       .channel('order-updates')
       .on(
@@ -78,20 +80,13 @@ const OrderList = () => {
         (payload) => {
           console.log('Order update received:', payload);
           if (payload.eventType === 'INSERT') {
-            fetchOrders();
+            fetchOrdersUsingFunction();
             toast({
               title: "New Order Request",
               description: "You have received a new order request from a customer!",
             });
-          } else if (payload.eventType === 'UPDATE' && payload.new && payload.old) {
-            // Update the specific order in state
-            setOrders(prevOrders => 
-              prevOrders.map(order => 
-                order.id === payload.new.id 
-                  ? { ...order, status: payload.new.status, payment_status: payload.new.payment_status } 
-                  : order
-              )
-            );
+          } else if (payload.eventType === 'UPDATE') {
+            fetchOrdersUsingFunction();
           }
         }
       )
@@ -106,7 +101,7 @@ const OrderList = () => {
     localStorage.setItem("viewedOrders", JSON.stringify(Array.from(viewedOrders)));
   }, [viewedOrders]);
 
-  const fetchOrders = async () => {
+  const fetchOrdersUsingFunction = async () => {
     try {
       setIsLoading(true);
       const { data: { user } } = await supabase.auth.getUser();
@@ -116,10 +111,47 @@ const OrderList = () => {
         return;
       }
 
-      console.log('Fetching orders for seller:', user.id);
+      console.log('Fetching orders using alternative method for seller:', user.id);
 
-      // Now we can directly query orders with the fixed RLS policies
-      const { data: sellerOrders, error: ordersError } = await supabase
+      // First, get orders by checking if user is seller for any products in the order
+      const { data: sellerProducts } = await supabase
+        .from('products')
+        .select('id')
+        .eq('seller_id', user.id);
+
+      if (!sellerProducts || sellerProducts.length === 0) {
+        console.log('No products found for seller');
+        setOrders([]);
+        return;
+      }
+
+      const productIds = sellerProducts.map(p => p.id);
+
+      // Get order items for seller's products
+      const { data: orderItems } = await supabase
+        .from('order_items')
+        .select(`
+          order_id,
+          quantity,
+          product_id,
+          products!inner (
+            name,
+            unit
+          )
+        `)
+        .in('product_id', productIds);
+
+      if (!orderItems || orderItems.length === 0) {
+        console.log('No order items found for seller products');
+        setOrders([]);
+        return;
+      }
+
+      // Get unique order IDs
+      const orderIds = [...new Set(orderItems.map(item => item.order_id))];
+
+      // Fetch order details
+      const { data: orderDetails } = await supabase
         .from('orders')
         .select(`
           id,
@@ -128,61 +160,52 @@ const OrderList = () => {
           status,
           payment_status,
           shipping_address,
-          buyer_id,
-          order_items (
-            id,
-            quantity,
-            product_id,
-            products (
-              name,
-              unit
-            )
-          )
+          buyer_id
         `)
+        .in('id', orderIds)
         .order('created_at', { ascending: false });
 
-      if (ordersError) {
-        console.error('Error fetching orders:', ordersError);
-        throw ordersError;
-      }
-
-      if (!sellerOrders || sellerOrders.length === 0) {
-        console.log('No orders found for seller');
+      if (!orderDetails) {
+        console.log('No order details found');
         setOrders([]);
         return;
       }
 
-      // Fetch buyer profiles for the orders
-      const buyerIds = [...new Set(sellerOrders.map(order => order.buyer_id))];
-      const { data: buyerProfiles, error: buyerError } = await supabase
+      // Get buyer profiles
+      const buyerIds = [...new Set(orderDetails.map(order => order.buyer_id))];
+      const { data: buyerProfiles } = await supabase
         .from('profiles')
         .select('id, full_name')
         .in('id', buyerIds);
 
-      if (buyerError) {
-        console.error('Error fetching buyer profiles:', buyerError);
-      }
-
       // Transform the data
-      const ordersWithDetails = sellerOrders.map(order => ({
-        id: order.id,
-        created_at: order.created_at,
-        total_amount: order.total_amount,
-        status: order.status || 'pending',
-        payment_status: order.payment_status || 'pending',
-        shipping_address: order.shipping_address || '',
-        buyer: buyerProfiles?.find(buyer => buyer.id === order.buyer_id) || 
-               { id: order.buyer_id, full_name: 'Unknown' },
-        order_items: order.order_items?.map(item => ({
-          id: item.id,
-          quantity: item.quantity,
-          product_name: item.products?.name || 'Unknown Product',
-          product_unit: item.products?.unit || ''
-        })) || [],
-        is_new: !viewedOrders.has(order.id)
-      }));
+      const ordersWithDetails = orderDetails.map(order => {
+        const relatedItems = orderItems
+          .filter(item => item.order_id === order.id)
+          .map(item => ({
+            id: item.product_id,
+            quantity: item.quantity,
+            product_name: item.products?.name || 'Unknown Product',
+            product_unit: item.products?.unit || ''
+          }));
 
-      console.log('Successfully fetched orders for seller:', ordersWithDetails.length);
+        const buyer = buyerProfiles?.find(buyer => buyer.id === order.buyer_id) || 
+                     { id: order.buyer_id, full_name: 'Unknown' };
+
+        return {
+          id: order.id,
+          created_at: order.created_at,
+          total_amount: order.total_amount,
+          status: order.status || 'pending',
+          payment_status: order.payment_status || 'pending',
+          shipping_address: order.shipping_address || '',
+          buyer,
+          order_items: relatedItems,
+          is_new: !viewedOrders.has(order.id)
+        };
+      });
+
+      console.log('Successfully fetched orders using alternative method:', ordersWithDetails.length);
       setOrders(ordersWithDetails);
     } catch (error) {
       console.error('Error fetching orders:', error);
@@ -209,7 +232,6 @@ const OrderList = () => {
         order.id === orderId ? { ...order, status } : order
       ));
 
-      // Show different messages based on action
       if (status === 'processing') {
         toast({
           title: "Order Accepted",

@@ -17,16 +17,51 @@ const Orders = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      // Count pending orders with the corrected RLS policies
-      const countPendingOrders = async () => {
+      // Count pending orders using alternative method
+      const countPendingOrdersAlternative = async () => {
         const viewedOrders = new Set(JSON.parse(localStorage.getItem("viewedOrders") || "[]"));
         
+        // Get seller's products first
+        const { data: sellerProducts } = await supabase
+          .from('products')
+          .select('id')
+          .eq('seller_id', user.id);
+
+        if (!sellerProducts || sellerProducts.length === 0) {
+          setNewOrders(0);
+          setShowAlert(false);
+          return;
+        }
+
+        const productIds = sellerProducts.map(p => p.id);
+
+        // Get order items for seller's products
+        const { data: orderItems } = await supabase
+          .from('order_items')
+          .select('order_id')
+          .in('product_id', productIds);
+
+        if (!orderItems || orderItems.length === 0) {
+          setNewOrders(0);
+          setShowAlert(false);
+          return;
+        }
+
+        // Get unique order IDs
+        const orderIds = [...new Set(orderItems.map(item => item.order_id))];
+
+        // Get pending orders
         const { data: pendingOrders } = await supabase
           .from('orders')
           .select('id')
+          .in('id', orderIds)
           .eq('status', 'pending');
 
-        if (!pendingOrders) return;
+        if (!pendingOrders) {
+          setNewOrders(0);
+          setShowAlert(false);
+          return;
+        }
         
         // Filter orders that haven't been viewed yet
         const newOrdersCount = pendingOrders.filter(order => 
@@ -37,7 +72,7 @@ const Orders = () => {
         setShowAlert(newOrdersCount > 0);
       };
 
-      countPendingOrders();
+      countPendingOrdersAlternative();
 
       // Subscribe to new orders
       const channel = supabase
