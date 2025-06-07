@@ -38,6 +38,8 @@ interface OrderItem {
   quantity: number;
   product_name: string;
   product_unit: string;
+  unit_price: number;
+  total_price: number;
 }
 
 interface Order {
@@ -110,8 +112,8 @@ const OrderList = () => {
 
       console.log('Fetching orders for seller:', user.id);
 
-      // Fetch orders with order items and products using the new RLS policies
-      const { data: ordersData, error } = await supabase
+      // First, get all orders with basic info
+      const { data: ordersData, error: ordersError } = await supabase
         .from('orders')
         .select(`
           id,
@@ -120,25 +122,13 @@ const OrderList = () => {
           status,
           payment_status,
           shipping_address,
-          buyer_id,
-          order_items (
-            id,
-            quantity,
-            unit_price,
-            total_price,
-            products (
-              id,
-              name,
-              unit,
-              seller_id
-            )
-          )
+          buyer_id
         `)
         .order('created_at', { ascending: false });
 
-      if (error) {
-        console.error('Error fetching orders:', error);
-        throw error;
+      if (ordersError) {
+        console.error('Error fetching orders:', ordersError);
+        throw ordersError;
       }
 
       if (!ordersData || ordersData.length === 0) {
@@ -149,12 +139,55 @@ const OrderList = () => {
 
       console.log('Raw orders data:', ordersData);
 
-      // Filter orders that contain seller's products and get buyer profiles
-      const sellerOrders = ordersData.filter(order => 
-        order.order_items?.some(item => 
-          item.products?.seller_id === user.id
-        )
+      // Get order items with product info for each order
+      const ordersWithItems = await Promise.all(
+        ordersData.map(async (order) => {
+          const { data: orderItems, error: itemsError } = await supabase
+            .from('order_items')
+            .select(`
+              id,
+              quantity,
+              unit_price,
+              total_price,
+              products (
+                id,
+                name,
+                unit,
+                seller_id
+              )
+            `)
+            .eq('order_id', order.id);
+
+          if (itemsError) {
+            console.error('Error fetching order items:', itemsError);
+            return null;
+          }
+
+          // Check if this order contains seller's products
+          const sellerItems = orderItems?.filter(item => 
+            item.products?.seller_id === user.id
+          ) || [];
+
+          if (sellerItems.length === 0) {
+            return null; // This order doesn't contain seller's products
+          }
+
+          return {
+            ...order,
+            order_items: sellerItems.map(item => ({
+              id: item.id,
+              quantity: item.quantity,
+              unit_price: item.unit_price,
+              total_price: item.total_price,
+              product_name: item.products?.name || 'Unknown Product',
+              product_unit: item.products?.unit || ''
+            }))
+          };
+        })
       );
+
+      // Filter out null orders (orders without seller's products)
+      const sellerOrders = ordersWithItems.filter(order => order !== null);
 
       if (sellerOrders.length === 0) {
         console.log('No orders found for this seller');
@@ -174,15 +207,6 @@ const OrderList = () => {
         const buyer = buyerProfiles?.find(buyer => buyer.id === order.buyer_id) || 
                      { id: order.buyer_id, full_name: 'Unknown' };
 
-        const orderItems = order.order_items
-          ?.filter(item => item.products?.seller_id === user.id)
-          .map(item => ({
-            id: item.id,
-            quantity: item.quantity,
-            product_name: item.products?.name || 'Unknown Product',
-            product_unit: item.products?.unit || ''
-          })) || [];
-
         return {
           id: order.id,
           created_at: order.created_at,
@@ -191,7 +215,7 @@ const OrderList = () => {
           payment_status: order.payment_status || 'pending',
           shipping_address: order.shipping_address || '',
           buyer,
-          order_items: orderItems,
+          order_items: order.order_items,
           is_new: !viewedOrders.has(order.id)
         };
       });

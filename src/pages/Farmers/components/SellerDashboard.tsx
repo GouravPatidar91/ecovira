@@ -80,18 +80,10 @@ const SellerDashboard = () => {
       // Get viewed orders from localStorage
       const viewedOrders = new Set(JSON.parse(localStorage.getItem("viewedOrders") || "[]"));
       
-      // Fetch orders using the new RLS policies
+      // Get all pending orders
       const { data: ordersData, error } = await supabase
         .from('orders')
-        .select(`
-          id,
-          status,
-          order_items (
-            products (
-              seller_id
-            )
-          )
-        `)
+        .select('id')
         .eq('status', 'pending');
 
       if (error) {
@@ -106,15 +98,33 @@ const SellerDashboard = () => {
         return;
       }
 
-      // Filter orders that contain this seller's products and haven't been viewed
-      const sellerOrders = ordersData.filter(order => 
-        order.order_items?.some(item => 
-          item.products?.seller_id === user.id
-        ) && !viewedOrders.has(order.id)
-      );
+      // Check each order to see if it contains seller's products
+      let sellerOrdersCount = 0;
       
-      console.log('New unviewed pending orders for this seller:', sellerOrders.length);
-      setNewOrdersCount(sellerOrders.length);
+      for (const order of ordersData) {
+        // Check if this order has items from this seller
+        const { data: orderItems } = await supabase
+          .from('order_items')
+          .select(`
+            products (
+              seller_id
+            )
+          `)
+          .eq('order_id', order.id);
+
+        // Check if any item in this order belongs to the current seller
+        const hasSellerItems = orderItems?.some(item => 
+          item.products?.seller_id === user.id
+        );
+
+        // If order has seller's items and hasn't been viewed, count it
+        if (hasSellerItems && !viewedOrders.has(order.id)) {
+          sellerOrdersCount++;
+        }
+      }
+      
+      console.log('New unviewed pending orders for this seller:', sellerOrdersCount);
+      setNewOrdersCount(sellerOrdersCount);
     } catch (error) {
       console.error('Error getting new orders count:', error);
     } finally {

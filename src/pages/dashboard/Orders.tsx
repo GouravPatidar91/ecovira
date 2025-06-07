@@ -21,18 +21,10 @@ const Orders = () => {
       const countPendingOrders = async () => {
         const viewedOrders = new Set(JSON.parse(localStorage.getItem("viewedOrders") || "[]"));
         
-        // Fetch orders using the new RLS policies
+        // Get all pending orders
         const { data: ordersData } = await supabase
           .from('orders')
-          .select(`
-            id,
-            status,
-            order_items (
-              products (
-                seller_id
-              )
-            )
-          `)
+          .select('id')
           .eq('status', 'pending');
 
         if (!ordersData || ordersData.length === 0) {
@@ -41,15 +33,33 @@ const Orders = () => {
           return;
         }
         
-        // Filter orders that contain this seller's products and haven't been viewed
-        const newOrdersCount = ordersData.filter(order => 
-          order.order_items?.some(item => 
-            item.products?.seller_id === user.id
-          ) && !viewedOrders.has(order.id)
-        ).length;
+        // Check each order to see if it contains seller's products
+        let sellerOrdersCount = 0;
         
-        setNewOrders(newOrdersCount);
-        setShowAlert(newOrdersCount > 0);
+        for (const order of ordersData) {
+          // Check if this order has items from this seller
+          const { data: orderItems } = await supabase
+            .from('order_items')
+            .select(`
+              products (
+                seller_id
+              )
+            `)
+            .eq('order_id', order.id);
+
+          // Check if any item in this order belongs to the current seller
+          const hasSellerItems = orderItems?.some(item => 
+            item.products?.seller_id === user.id
+          );
+
+          // If order has seller's items and hasn't been viewed, count it
+          if (hasSellerItems && !viewedOrders.has(order.id)) {
+            sellerOrdersCount++;
+          }
+        }
+        
+        setNewOrders(sellerOrdersCount);
+        setShowAlert(sellerOrdersCount > 0);
       };
 
       countPendingOrders();
