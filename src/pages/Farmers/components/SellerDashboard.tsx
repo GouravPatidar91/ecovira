@@ -14,7 +14,7 @@ const SellerDashboard = () => {
   const { toast } = useToast();
 
   useEffect(() => {
-    getNewOrdersCountAlternative();
+    getNewOrdersCount();
     
     // Subscribe to new orders
     const channel = supabase
@@ -28,7 +28,7 @@ const SellerDashboard = () => {
         },
         (payload) => {
           console.log('New order created:', payload);
-          getNewOrdersCountAlternative();
+          getNewOrdersCount();
           
           toast({
             title: "New Order Received",
@@ -49,7 +49,7 @@ const SellerDashboard = () => {
           table: 'orders'
         },
         () => {
-          getNewOrdersCountAlternative();
+          getNewOrdersCount();
         }
       )
       .subscribe();
@@ -60,7 +60,7 @@ const SellerDashboard = () => {
     };
   }, [toast]);
 
-  const getNewOrdersCountAlternative = async () => {
+  const getNewOrdersCount = async () => {
     try {
       setIsLoading(true);
       const { data: { user }, error: userError } = await supabase.auth.getUser();
@@ -75,55 +75,40 @@ const SellerDashboard = () => {
         return;
       }
 
-      console.log('Fetching new orders count using alternative method for seller:', user.id);
+      console.log('Fetching new orders count for seller:', user.id);
       
       // Get viewed orders from localStorage
       const viewedOrders = new Set(JSON.parse(localStorage.getItem("viewedOrders") || "[]"));
       
-      // Get seller's products first
-      const { data: sellerProducts } = await supabase
-        .from('products')
-        .select('id')
-        .eq('seller_id', user.id);
-
-      if (!sellerProducts || sellerProducts.length === 0) {
-        console.log('No products found for seller');
-        setNewOrdersCount(0);
-        return;
-      }
-
-      const productIds = sellerProducts.map(p => p.id);
-
-      // Get order items for seller's products
-      const { data: orderItems } = await supabase
-        .from('order_items')
-        .select('order_id')
-        .in('product_id', productIds);
-
-      if (!orderItems || orderItems.length === 0) {
-        console.log('No order items found for seller products');
-        setNewOrdersCount(0);
-        return;
-      }
-
-      // Get unique order IDs
-      const orderIds = [...new Set(orderItems.map(item => item.order_id))];
-
-      // Get pending orders
-      const { data: pendingOrders } = await supabase
+      // Get orders that contain products from this seller
+      const { data: ordersWithSellerProducts, error } = await supabase
         .from('orders')
-        .select('id')
-        .in('id', orderIds)
+        .select(`
+          id,
+          status,
+          order_items!inner (
+            products!inner (
+              seller_id
+            )
+          )
+        `)
+        .eq('order_items.products.seller_id', user.id)
         .eq('status', 'pending');
 
-      if (!pendingOrders || pendingOrders.length === 0) {
+      if (error) {
+        console.error('Error fetching orders:', error);
+        setNewOrdersCount(0);
+        return;
+      }
+
+      if (!ordersWithSellerProducts || ordersWithSellerProducts.length === 0) {
         console.log('No pending orders found for seller');
         setNewOrdersCount(0);
         return;
       }
 
       // Count unviewed pending orders
-      const newOrdersCount = pendingOrders.filter(order => 
+      const newOrdersCount = ordersWithSellerProducts.filter(order => 
         !viewedOrders.has(order.id)
       ).length;
       
