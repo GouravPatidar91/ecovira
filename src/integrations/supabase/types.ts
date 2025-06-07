@@ -460,6 +460,14 @@ export type Database = {
         Args: { order_uuid: string }
         Returns: boolean
       }
+      user_can_view_order: {
+        Args: { order_uuid: string }
+        Returns: boolean
+      }
+      user_can_view_order_item: {
+        Args: { order_item_uuid: string }
+        Returns: boolean
+      }
       user_is_seller_for_order: {
         Args: { order_id: string }
         Returns: boolean

@@ -80,19 +80,18 @@ const SellerDashboard = () => {
       // Get viewed orders from localStorage
       const viewedOrders = new Set(JSON.parse(localStorage.getItem("viewedOrders") || "[]"));
       
-      // Get orders that contain products from this seller
-      const { data: ordersWithSellerProducts, error } = await supabase
+      // Fetch orders using the new RLS policies
+      const { data: ordersData, error } = await supabase
         .from('orders')
         .select(`
           id,
           status,
-          order_items!inner (
-            products!inner (
+          order_items (
+            products (
               seller_id
             )
           )
         `)
-        .eq('order_items.products.seller_id', user.id)
         .eq('status', 'pending');
 
       if (error) {
@@ -101,19 +100,21 @@ const SellerDashboard = () => {
         return;
       }
 
-      if (!ordersWithSellerProducts || ordersWithSellerProducts.length === 0) {
-        console.log('No pending orders found for seller');
+      if (!ordersData || ordersData.length === 0) {
+        console.log('No pending orders found');
         setNewOrdersCount(0);
         return;
       }
 
-      // Count unviewed pending orders
-      const newOrdersCount = ordersWithSellerProducts.filter(order => 
-        !viewedOrders.has(order.id)
-      ).length;
+      // Filter orders that contain this seller's products and haven't been viewed
+      const sellerOrders = ordersData.filter(order => 
+        order.order_items?.some(item => 
+          item.products?.seller_id === user.id
+        ) && !viewedOrders.has(order.id)
+      );
       
-      console.log('New unviewed pending orders for this seller:', newOrdersCount);
-      setNewOrdersCount(newOrdersCount);
+      console.log('New unviewed pending orders for this seller:', sellerOrders.length);
+      setNewOrdersCount(sellerOrders.length);
     } catch (error) {
       console.error('Error getting new orders count:', error);
     } finally {

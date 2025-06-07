@@ -21,29 +21,31 @@ const Orders = () => {
       const countPendingOrders = async () => {
         const viewedOrders = new Set(JSON.parse(localStorage.getItem("viewedOrders") || "[]"));
         
-        // Get orders that contain products from this seller
-        const { data: ordersWithSellerProducts } = await supabase
+        // Fetch orders using the new RLS policies
+        const { data: ordersData } = await supabase
           .from('orders')
           .select(`
             id,
-            order_items!inner (
-              products!inner (
+            status,
+            order_items (
+              products (
                 seller_id
               )
             )
           `)
-          .eq('order_items.products.seller_id', user.id)
           .eq('status', 'pending');
 
-        if (!ordersWithSellerProducts || ordersWithSellerProducts.length === 0) {
+        if (!ordersData || ordersData.length === 0) {
           setNewOrders(0);
           setShowAlert(false);
           return;
         }
         
-        // Filter orders that haven't been viewed yet
-        const newOrdersCount = ordersWithSellerProducts.filter(order => 
-          !viewedOrders.has(order.id)
+        // Filter orders that contain this seller's products and haven't been viewed
+        const newOrdersCount = ordersData.filter(order => 
+          order.order_items?.some(item => 
+            item.products?.seller_id === user.id
+          ) && !viewedOrders.has(order.id)
         ).length;
         
         setNewOrders(newOrdersCount);
@@ -63,8 +65,7 @@ const Orders = () => {
             table: 'orders'
           },
           (payload) => {
-            setNewOrders(prev => prev + 1);
-            setShowAlert(true);
+            countPendingOrders();
             
             toast({
               title: "New Order Received",

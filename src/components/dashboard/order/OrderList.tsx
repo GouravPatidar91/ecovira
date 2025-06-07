@@ -20,7 +20,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { 
-  Bell, 
   Loader2, 
   User,
   MapPin,
@@ -79,14 +78,12 @@ const OrderList = () => {
         },
         (payload) => {
           console.log('Order update received:', payload);
+          fetchSellerOrders();
           if (payload.eventType === 'INSERT') {
-            fetchSellerOrders();
             toast({
               title: "New Order Request",
               description: "You have received a new order request from a customer!",
             });
-          } else if (payload.eventType === 'UPDATE') {
-            fetchSellerOrders();
           }
         }
       )
@@ -113,8 +110,8 @@ const OrderList = () => {
 
       console.log('Fetching orders for seller:', user.id);
 
-      // Step 1: Get all orders that contain products from this seller
-      const { data: ordersWithSellerProducts, error: ordersError } = await supabase
+      // Fetch orders with order items and products using the new RLS policies
+      const { data: ordersData, error } = await supabase
         .from('orders')
         .select(`
           id,
@@ -124,12 +121,12 @@ const OrderList = () => {
           payment_status,
           shipping_address,
           buyer_id,
-          order_items!inner (
+          order_items (
             id,
             quantity,
             unit_price,
             total_price,
-            products!inner (
+            products (
               id,
               name,
               unit,
@@ -137,42 +134,54 @@ const OrderList = () => {
             )
           )
         `)
-        .eq('order_items.products.seller_id', user.id)
         .order('created_at', { ascending: false });
 
-      if (ordersError) {
-        console.error('Error fetching orders:', ordersError);
-        throw ordersError;
+      if (error) {
+        console.error('Error fetching orders:', error);
+        throw error;
       }
 
-      if (!ordersWithSellerProducts || ordersWithSellerProducts.length === 0) {
+      if (!ordersData || ordersData.length === 0) {
+        console.log('No orders found');
+        setOrders([]);
+        return;
+      }
+
+      console.log('Raw orders data:', ordersData);
+
+      // Filter orders that contain seller's products and get buyer profiles
+      const sellerOrders = ordersData.filter(order => 
+        order.order_items?.some(item => 
+          item.products?.seller_id === user.id
+        )
+      );
+
+      if (sellerOrders.length === 0) {
         console.log('No orders found for this seller');
         setOrders([]);
         return;
       }
 
-      console.log('Found orders with seller products:', ordersWithSellerProducts.length);
-
-      // Step 2: Get buyer profiles
-      const buyerIds = [...new Set(ordersWithSellerProducts.map(order => order.buyer_id))];
+      // Get buyer profiles
+      const buyerIds = [...new Set(sellerOrders.map(order => order.buyer_id))];
       const { data: buyerProfiles } = await supabase
         .from('profiles')
         .select('id, full_name')
         .in('id', buyerIds);
 
-      // Step 3: Transform the data
-      const transformedOrders = ordersWithSellerProducts.map(order => {
+      // Transform the data
+      const transformedOrders = sellerOrders.map(order => {
         const buyer = buyerProfiles?.find(buyer => buyer.id === order.buyer_id) || 
                      { id: order.buyer_id, full_name: 'Unknown' };
 
         const orderItems = order.order_items
-          .filter(item => item.products?.seller_id === user.id)
+          ?.filter(item => item.products?.seller_id === user.id)
           .map(item => ({
             id: item.id,
             quantity: item.quantity,
             product_name: item.products?.name || 'Unknown Product',
             product_unit: item.products?.unit || ''
-          }));
+          })) || [];
 
         return {
           id: order.id,
