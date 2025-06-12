@@ -24,6 +24,7 @@ import AdminRoute from "@/components/AdminRoute";
 import FarmerRoute from "@/components/FarmerRoute";
 import ChatList from "@/pages/ChatList";
 import Chat from "@/pages/Chat";
+import BuyerOrders from "@/pages/BuyerOrders";
 
 // Create a client
 const queryClient = new QueryClient();
@@ -45,6 +46,7 @@ function App() {
                 <Route path="/order-payment" element={<OrderPaymentProcess />} />
                 <Route path="/chats" element={<ChatList />} />
                 <Route path="/chat" element={<Chat />} />
+                <Route path="/my-orders" element={<BuyerOrders />} />
 
                 <Route path="/seller-verification" element={<SellerVerification />} />
 

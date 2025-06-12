@@ -1,211 +1,145 @@
 
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { useAuth } from "@/contexts/AuthContext";
-import { useCart } from "@/contexts/CartContext";
-import { CartSheet } from "@/components/CartSheet";
-import {
-  Home,
-  Menu,
-  Search,
-  User,
-  LogOut,
-  ShoppingBag,
-  MessageCircle,
-} from "lucide-react";
-import {
-  Sheet,
-  SheetClose,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet";
+import { ShoppingCart, Menu, X, User, LogOut, Package } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
+import { useCart } from "@/contexts/CartContext";
+import { useAuth } from "@/contexts/AuthContext";
+import CartSheet from "./CartSheet";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
-const NavBar = () => {
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
+const Navigation = () => {
+  const [isOpen, setIsOpen] = useState(false);
+  const { items } = useCart();
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
-  const { clearCart } = useCart();
-  const { toast } = useToast();
 
-  const toggleMenu = () => {
-    setIsMenuOpen(!isMenuOpen);
-  };
+  const itemCount = items.reduce((sum, item) => sum + item.quantity, 0);
 
   const handleSignOut = async () => {
-    try {
-      await signOut();
-      clearCart();
-      navigate("/auth");
-    } catch (error) {
-      toast({
-        title: "Error signing out",
-        description: "Please try again.",
-        variant: "destructive",
-      });
-    }
+    await signOut();
+    navigate("/");
   };
 
-  // User profile data from Supabase profile
-  const userProfile = user ? {
-    avatar_url: undefined, // Will be populated from user metadata
-    full_name: undefined,
-    email: user.email
-  } : null;
-
-  const navigationItems = [
-    {
-      name: "Home",
-      href: "/",
-      icon: <Home className="h-4 w-4" />,
-      requireAuth: false,
-    },
-    {
-      name: "Market",
-      href: "/market",
-      icon: <ShoppingBag className="h-4 w-4" />,
-      requireAuth: false,
-    },
-    {
-      name: "Farmers",
-      href: "/farmers",
-      icon: <User className="h-4 w-4" />,
-      requireAuth: false,
-    },
-    {
-      name: "Dashboard",
-      href: "/dashboard/products",
-      icon: <User className="h-4 w-4" />,
-      requireAuth: true,
-    },
-    {
-      name: "Messages",
-      href: "/chats",
-      icon: <MessageCircle className="h-4 w-4" />,
-      requireAuth: true,
-    },
+  const navItems = [
+    { name: "Market", href: "/market" },
+    { name: "Farmers", href: "/farmers" },
+    { name: "About", href: "/about" },
   ];
 
   return (
-    <div className="bg-white border-b shadow-sm sticky top-0 z-50">
-      <div className="container mx-auto px-4 h-16 flex items-center justify-between">
-        <Link to="/" className="font-bold text-xl text-gray-800">
-          AgriChain
-        </Link>
-
-        <div className="hidden md:flex items-center space-x-4">
-          {navigationItems.map(
-            (item, index) =>
-              (!item.requireAuth || user) && (
+    <nav className="bg-white shadow-lg sticky top-0 z-50">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex justify-between h-16">
+          <div className="flex items-center">
+            <Link to="/" className="flex-shrink-0 flex items-center">
+              <span className="text-2xl font-bold text-market-600">FreshDirect</span>
+            </Link>
+            <div className="hidden md:ml-6 md:flex md:space-x-8">
+              {navItems.map((item) => (
                 <Link
-                  key={index}
+                  key={item.name}
                   to={item.href}
-                  className="text-gray-600 hover:text-gray-900 transition-colors duration-200 flex items-center space-x-2"
+                  className="text-gray-900 hover:text-market-600 px-3 py-2 text-sm font-medium transition-colors"
                 >
-                  {item.icon}
-                  <span>{item.name}</span>
+                  {item.name}
                 </Link>
-              )
-          )}
-        </div>
-
-        <div className="flex items-center space-x-4">
-          <div className="hidden md:block">
-            <CartSheet />
+              ))}
+            </div>
           </div>
 
-          {user ? (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="relative w-8 h-8 rounded-full">
-                  <Avatar className="w-8 h-8">
-                    <AvatarImage src={userProfile?.avatar_url} />
-                    <AvatarFallback>{userProfile?.full_name?.charAt(0) || user.email?.charAt(0) || '?'}</AvatarFallback>
-                  </Avatar>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-56" align="end" forceMount>
-                <DropdownMenuLabel className="font-normal">
-                  <div className="flex flex-col space-y-1">
-                    <p className="text-sm font-medium leading-none">{userProfile?.full_name || user.email}</p>
-                    <p className="text-xs leading-none text-muted-foreground">
-                      {user.email}
-                    </p>
-                  </div>
-                </DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => navigate("/dashboard/products")}>Dashboard</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => navigate("/chats")}>Messages</DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleSignOut}>
-                  <LogOut className="mr-2 h-4 w-4" />
-                  Sign Out
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          ) : (
-            <div className="hidden md:block">
-              <Link
-                to="/auth"
-                className="text-gray-600 hover:text-gray-900 transition-colors duration-200"
-              >
-                Sign In
-              </Link>
-            </div>
-          )}
-
-          <Sheet>
-            <SheetTrigger asChild>
-              <Button variant="outline" size="icon" className="md:hidden">
-                <Menu className="h-4 w-4" />
-              </Button>
-            </SheetTrigger>
-            <SheetContent side="left" className="w-full sm:w-64">
-              <SheetHeader>
-                <SheetTitle>Menu</SheetTitle>
-                <SheetDescription>
-                  Explore our site and manage your account.
-                </SheetDescription>
-              </SheetHeader>
-              <div className="py-4">
-                {navigationItems.map(
-                  (item, index) =>
-                    (!item.requireAuth || user) && (
-                      <Link
-                        key={index}
-                        to={item.href}
-                        className="block py-2 text-gray-600 hover:text-gray-900 transition-colors duration-200"
-                      >
-                        {item.name}
-                      </Link>
-                    )
-                )}
-                {!user ? (
-                  <Link
-                    to="/auth"
-                    className="block py-2 text-gray-600 hover:text-gray-900 transition-colors duration-200"
-                  >
-                    Sign In
-                  </Link>
-                ) : (
-                  <Button variant="ghost" className="w-full justify-start" onClick={handleSignOut}>
-                    Sign Out
+          <div className="flex items-center space-x-4">
+            {user ? (
+              <>
+                <Link to="/my-orders">
+                  <Button variant="ghost" size="sm" className="flex items-center">
+                    <Package className="h-4 w-4 mr-2" />
+                    My Orders
                   </Button>
-                )}
-              </div>
-            </SheetContent>
-          </Sheet>
+                </Link>
+                <CartSheet>
+                  <Button variant="ghost" size="sm" className="relative">
+                    <ShoppingCart className="h-5 w-5" />
+                    {itemCount > 0 && (
+                      <span className="absolute -top-2 -right-2 bg-market-600 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                        {itemCount}
+                      </span>
+                    )}
+                  </Button>
+                </CartSheet>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="sm">
+                      <User className="h-4 w-4 mr-2" />
+                      {user.email}
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={() => navigate("/dashboard")}>
+                      Dashboard
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={handleSignOut}>
+                      <LogOut className="h-4 w-4 mr-2" />
+                      Sign Out
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </>
+            ) : (
+              <Link to="/auth">
+                <Button>Sign In</Button>
+              </Link>
+            )}
+
+            {/* Mobile menu button */}
+            <div className="md:hidden">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setIsOpen(!isOpen)}
+              >
+                {isOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+              </Button>
+            </div>
+          </div>
         </div>
+
+        {/* Mobile menu */}
+        {isOpen && (
+          <div className="md:hidden">
+            <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3 bg-white border-t">
+              {navItems.map((item) => (
+                <Link
+                  key={item.name}
+                  to={item.href}
+                  className="text-gray-900 hover:text-market-600 block px-3 py-2 text-base font-medium"
+                  onClick={() => setIsOpen(false)}
+                >
+                  {item.name}
+                </Link>
+              ))}
+              {user && (
+                <Link
+                  to="/my-orders"
+                  className="text-gray-900 hover:text-market-600 block px-3 py-2 text-base font-medium"
+                  onClick={() => setIsOpen(false)}
+                >
+                  My Orders
+                </Link>
+              )}
+            </div>
+          </div>
+        )}
       </div>
-    </div>
+    </nav>
   );
 };
 
-export default NavBar;
+export default Navigation;
