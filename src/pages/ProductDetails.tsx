@@ -9,7 +9,6 @@ import { ArrowLeft, ShoppingCart } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { formatCurrency } from '@/lib/utils';
 import Navigation from '@/components/Navigation';
-import { CartProvider } from '@/contexts/CartContext';
 
 interface Product {
   id: string;
@@ -69,111 +68,105 @@ const ProductDetails = () => {
 
   if (loading) {
     return (
-      <CartProvider>
-        <div className="min-h-screen bg-gray-50">
-          <Navigation />
-          <div className="flex justify-center items-center h-64">
-            <div className="text-lg">Loading...</div>
-          </div>
+      <div className="min-h-screen bg-gray-50">
+        <Navigation />
+        <div className="flex justify-center items-center h-64">
+          <div className="text-lg">Loading...</div>
         </div>
-      </CartProvider>
+      </div>
     );
   }
 
   if (!product) {
     return (
-      <CartProvider>
-        <div className="min-h-screen bg-gray-50">
-          <Navigation />
-          <div className="container mx-auto px-4 py-8">
-            <div className="text-center">
-              <h1 className="text-2xl font-bold mb-4">Product not found</h1>
-              <Button onClick={() => navigate('/market')}>
-                Back to Market
-              </Button>
-            </div>
+      <div className="min-h-screen bg-gray-50">
+        <Navigation />
+        <div className="container mx-auto px-4 py-8">
+          <div className="text-center">
+            <h1 className="text-2xl font-bold mb-4">Product not found</h1>
+            <Button onClick={() => navigate('/market')}>
+              Back to Market
+            </Button>
           </div>
         </div>
-      </CartProvider>
+      </div>
     );
   }
 
   return (
-    <CartProvider>
-      <div className="min-h-screen bg-gray-50">
-        <Navigation />
-        <div className="container mx-auto px-4 py-8">
-          <Button
-            variant="ghost"
-            onClick={() => navigate('/market')}
-            className="mb-6"
-          >
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Market
-          </Button>
+    <div className="min-h-screen bg-gray-50">
+      <Navigation />
+      <div className="container mx-auto px-4 py-8">
+        <Button
+          variant="ghost"
+          onClick={() => navigate('/market')}
+          className="mb-6"
+        >
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Back to Market
+        </Button>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            <div>
-              {product.images && product.images.length > 0 ? (
-                <img
-                  src={product.images[0]}
-                  alt={product.name}
-                  className="w-full h-96 object-cover rounded-lg"
-                />
-              ) : (
-                <div className="w-full h-96 bg-gray-200 rounded-lg flex items-center justify-center">
-                  <span className="text-gray-500">No image available</span>
-                </div>
-              )}
-            </div>
-
-            <div className="space-y-6">
-              <div>
-                <h1 className="text-3xl font-bold mb-2">{product.name}</h1>
-                <div className="flex items-center gap-2 mb-4">
-                  {product.is_organic && (
-                    <Badge variant="secondary">Organic</Badge>
-                  )}
-                  <Badge variant="outline">{product.status}</Badge>
-                </div>
-                <p className="text-2xl font-bold text-green-600">
-                  {formatCurrency(product.price)} / {product.unit}
-                </p>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <div>
+            {product.images && product.images.length > 0 ? (
+              <img
+                src={product.images[0]}
+                alt={product.name}
+                className="w-full h-96 object-cover rounded-lg"
+              />
+            ) : (
+              <div className="w-full h-96 bg-gray-200 rounded-lg flex items-center justify-center">
+                <span className="text-gray-500">No image available</span>
               </div>
+            )}
+          </div>
 
-              <Card>
-                <CardHeader>
-                  <CardTitle>Product Details</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div>
-                    <h3 className="font-semibold mb-2">Description</h3>
-                    <p className="text-gray-600">{product.description || 'No description available'}</p>
-                  </div>
-                  <div>
-                    <h3 className="font-semibold mb-2">Availability</h3>
-                    <p className="text-gray-600">{product.quantity_available} {product.unit} available</p>
-                  </div>
-                  <div>
-                    <h3 className="font-semibold mb-2">Seller</h3>
-                    <p className="text-gray-600">{product.profiles?.full_name || 'Unknown Seller'}</p>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Button
-                size="lg"
-                className="w-full bg-green-600 hover:bg-green-700"
-                disabled={product.quantity_available === 0}
-              >
-                <ShoppingCart className="mr-2 h-5 w-5" />
-                {product.quantity_available === 0 ? 'Out of Stock' : 'Add to Cart'}
-              </Button>
+          <div className="space-y-6">
+            <div>
+              <h1 className="text-3xl font-bold mb-2">{product.name}</h1>
+              <div className="flex items-center gap-2 mb-4">
+                {product.is_organic && (
+                  <Badge variant="secondary">Organic</Badge>
+                )}
+                <Badge variant="outline">{product.status}</Badge>
+              </div>
+              <p className="text-2xl font-bold text-green-600">
+                {formatCurrency(product.price)} / {product.unit}
+              </p>
             </div>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Product Details</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <h3 className="font-semibold mb-2">Description</h3>
+                  <p className="text-gray-600">{product.description || 'No description available'}</p>
+                </div>
+                <div>
+                  <h3 className="font-semibold mb-2">Availability</h3>
+                  <p className="text-gray-600">{product.quantity_available} {product.unit} available</p>
+                </div>
+                <div>
+                  <h3 className="font-semibold mb-2">Seller</h3>
+                  <p className="text-gray-600">{product.profiles?.full_name || 'Unknown Seller'}</p>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Button
+              size="lg"
+              className="w-full bg-green-600 hover:bg-green-700"
+              disabled={product.quantity_available === 0}
+            >
+              <ShoppingCart className="mr-2 h-5 w-5" />
+              {product.quantity_available === 0 ? 'Out of Stock' : 'Add to Cart'}
+            </Button>
           </div>
         </div>
       </div>
-    </CartProvider>
+    </div>
   );
 };
 

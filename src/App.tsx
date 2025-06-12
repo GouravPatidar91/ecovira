@@ -1,7 +1,6 @@
 
 import React from 'react';
 import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
-import Navigation from '@/components/Navigation';
 import { CartProvider } from '@/contexts/CartContext';
 import Market from '@/pages/Market';
 import ProductDetails from '@/pages/ProductDetails';
@@ -16,29 +15,32 @@ import OrderPaymentProcess from '@/pages/OrderPaymentProcess';
 import Chat from '@/pages/Chat';
 import BuyerOrders from "@/pages/dashboard/BuyerOrders";
 import Auth from '@/pages/Auth';
+import Home from '@/pages/Home';
 
 function App() {
   return (
-    <Router>
-      <div className="min-h-screen bg-background">
-        <Routes>
-          <Route path="/" element={<Market />} />
-          <Route path="/market" element={<Market />} />
-          <Route path="/product/:id" element={<ProductDetails />} />
-          <Route path="/farmers" element={<Farmers />} />
-          <Route path="/order-confirmation" element={<OrderConfirmation />} />
-          <Route path="/payment/process" element={<OrderPaymentProcess />} />
-          <Route path="/chat" element={<Chat />} />
-          <Route path="/auth" element={<Auth />} />
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/dashboard/products" element={<Products />} />
-          <Route path="/dashboard/products/new" element={<CreateProduct />} />
-          <Route path="/dashboard/products/edit/:id" element={<EditProduct />} />
-          <Route path="/dashboard/orders" element={<Orders />} />
-          <Route path="/dashboard/my-orders" element={<BuyerOrders />} />
-        </Routes>
-      </div>
-    </Router>
+    <CartProvider>
+      <Router>
+        <div className="min-h-screen bg-background">
+          <Routes>
+            <Route path="/" element={<Home />} />
+            <Route path="/market" element={<Market />} />
+            <Route path="/product/:id" element={<ProductDetails />} />
+            <Route path="/farmers" element={<Farmers />} />
+            <Route path="/order-confirmation" element={<OrderConfirmation />} />
+            <Route path="/payment/process" element={<OrderPaymentProcess />} />
+            <Route path="/chat" element={<Chat />} />
+            <Route path="/auth" element={<Auth />} />
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/dashboard/products" element={<Products />} />
+            <Route path="/dashboard/products/new" element={<CreateProduct />} />
+            <Route path="/dashboard/products/edit/:id" element={<EditProduct />} />
+            <Route path="/dashboard/orders" element={<Orders />} />
+            <Route path="/dashboard/my-orders" element={<BuyerOrders />} />
+          </Routes>
+        </div>
+      </Router>
+    </CartProvider>
   );
 }
 
