@@ -3,7 +3,16 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
-interface Order {
+interface OrderItem {
+  id: string;
+  quantity: number;
+  product_name: string;
+  product_unit: string;
+  unit_price: number;
+  total_price: number;
+}
+
+interface SellerOrder {
   id: string;
   created_at: string;
   total_amount: number;
@@ -12,79 +21,53 @@ interface Order {
   shipping_address: string;
   buyer_id: string;
   buyer_name: string;
-  order_items: {
-    id: string;
-    quantity: number;
-    product_name: string;
-    product_unit: string;
-    unit_price: number;
-    total_price: number;
-  }[];
+  order_items: OrderItem[];
   is_new?: boolean;
 }
 
 export const useSellerOrders = () => {
-  const [orders, setOrders] = useState<Order[]>([]);
-  const [newOrdersCount, setNewOrdersCount] = useState(0);
+  const [orders, setOrders] = useState<SellerOrder[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [newOrdersCount, setNewOrdersCount] = useState(0);
   const { toast } = useToast();
 
-  const fetchSellerOrders = async () => {
+  const fetchOrders = async () => {
     try {
       setIsLoading(true);
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        console.log('No authenticated user found');
-        setOrders([]);
-        setNewOrdersCount(0);
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        console.log('No session found');
         return;
       }
 
-      console.log('Fetching orders for seller:', user.id);
-
-      // Use RPC function to get seller orders
-      const { data: sellerOrders, error } = await supabase.rpc('get_seller_orders', {
-        seller_user_id: user.id
+      const { data, error } = await supabase.rpc('get_seller_orders', {
+        seller_user_id: session.user.id
       });
 
       if (error) {
         console.error('Error fetching seller orders:', error);
-        throw error;
-      }
-
-      if (!sellerOrders || sellerOrders.length === 0) {
-        console.log('No orders found for this seller');
-        setOrders([]);
-        setNewOrdersCount(0);
+        toast({
+          title: "Error",
+          description: "Failed to fetch orders",
+          variant: "destructive",
+        });
         return;
       }
 
-      // Get viewed orders from localStorage
-      const viewedOrders = new Set(JSON.parse(localStorage.getItem("viewedOrders") || "[]"));
-
-      // Transform and mark new orders
-      const transformedOrders = sellerOrders.map((order: any) => ({
-        ...order,
-        is_new: !viewedOrders.has(order.id) && order.status === 'pending'
-      }));
-
-      // Count new pending orders
-      const newCount = transformedOrders.filter(order => order.is_new).length;
+      console.log('Fetched orders:', data);
       
-      console.log('Successfully fetched seller orders:', transformedOrders.length);
-      console.log('New pending orders:', newCount);
-      
-      setOrders(transformedOrders);
-      setNewOrdersCount(newCount);
+      if (data && Array.isArray(data)) {
+        const processedOrders = data.map((order: any) => ({
+          ...order,
+          is_new: order.status === 'pending'
+        }));
+        
+        setOrders(processedOrders);
+        setNewOrdersCount(processedOrders.filter((order: SellerOrder) => order.status === 'pending').length);
+      }
     } catch (error) {
-      console.error('Error in fetchSellerOrders:', error);
-      toast({
-        title: "Error",
-        description: "Failed to load orders. Please try refreshing the page.",
-        variant: "destructive",
-      });
-      setOrders([]);
-      setNewOrdersCount(0);
+      console.error('Error in fetchOrders:', error);
     } finally {
       setIsLoading(false);
     }
@@ -97,67 +80,62 @@ export const useSellerOrders = () => {
         .update({ status })
         .eq('id', orderId);
 
-      if (error) throw error;
-
-      setOrders(orders.map(order => 
-        order.id === orderId ? { ...order, status } : order
-      ));
-
-      if (status === 'processing') {
+      if (error) {
+        console.error('Error updating order status:', error);
         toast({
-          title: "Order Accepted",
-          description: "Order has been accepted and the buyer will be notified.",
+          title: "Error",
+          description: "Failed to update order status",
+          variant: "destructive",
         });
-      } else if (status === 'cancelled') {
-        toast({
-          title: "Order Declined",
-          description: "Order has been declined and the buyer will be notified.",
-        });
+        return;
       }
-    } catch (error) {
-      console.error('Error updating order status:', error);
+
       toast({
-        title: "Error",
-        description: "Failed to update order status",
-        variant: "destructive",
+        title: "Success",
+        description: `Order ${status === 'processing' ? 'accepted' : status}`,
       });
+
+      // Refresh orders after update
+      fetchOrders();
+    } catch (error) {
+      console.error('Error in updateOrderStatus:', error);
     }
   };
 
-  const markOrderAsViewed = (orderId: string) => {
-    const viewedOrders = new Set(JSON.parse(localStorage.getItem("viewedOrders") || "[]"));
-    viewedOrders.add(orderId);
-    localStorage.setItem("viewedOrders", JSON.stringify(Array.from(viewedOrders)));
-    
-    setOrders(orders.map(order => 
-      order.id === orderId ? { ...order, is_new: false } : order
-    ));
-    
-    setNewOrdersCount(prev => Math.max(0, prev - 1));
+  const markOrderAsViewed = async (orderId: string) => {
+    setOrders(prevOrders =>
+      prevOrders.map(order =>
+        order.id === orderId ? { ...order, is_new: false } : order
+      )
+    );
   };
 
   useEffect(() => {
-    fetchSellerOrders();
+    fetchOrders();
 
-    // Subscribe to order changes
+    // Set up real-time subscription for new orders
     const channel = supabase
-      .channel('seller-orders-updates')
+      .channel('seller-orders')
       .on(
         'postgres_changes',
-        { 
-          event: '*', 
+        {
+          event: 'INSERT',
           schema: 'public',
           table: 'orders'
         },
-        (payload) => {
-          console.log('Order update received:', payload);
-          fetchSellerOrders();
-          if (payload.eventType === 'INSERT') {
-            toast({
-              title: "New Order Request",
-              description: "You have received a new order request!",
-            });
-          }
+        () => {
+          fetchOrders(); // Refetch when new order is inserted
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'orders'
+        },
+        () => {
+          fetchOrders(); // Refetch when order is updated
         }
       )
       .subscribe();
@@ -165,14 +143,14 @@ export const useSellerOrders = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [toast]);
+  }, []);
 
   return {
     orders,
-    newOrdersCount,
     isLoading,
+    newOrdersCount,
     updateOrderStatus,
     markOrderAsViewed,
-    refetch: fetchSellerOrders
+    refetch: fetchOrders
   };
 };

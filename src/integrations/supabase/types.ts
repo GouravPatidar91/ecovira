@@ -456,6 +456,20 @@ export type Database = {
           product_unit: string
         }[]
       }
+      get_seller_orders: {
+        Args: { seller_user_id: string }
+        Returns: {
+          id: string
+          created_at: string
+          total_amount: number
+          status: string
+          payment_status: string
+          shipping_address: string
+          buyer_id: string
+          buyer_name: string
+          order_items: Json
+        }[]
+      }
       is_seller_for_order: {
         Args: { order_uuid: string }
         Returns: boolean
