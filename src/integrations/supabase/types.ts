@@ -474,6 +474,10 @@ export type Database = {
         Args: { order_uuid: string }
         Returns: boolean
       }
+      update_order_status: {
+        Args: { order_uuid: string; new_status: string }
+        Returns: undefined
+      }
       user_can_view_order: {
         Args: { order_uuid: string }
         Returns: boolean

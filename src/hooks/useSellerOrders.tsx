@@ -75,10 +75,10 @@ export const useSellerOrders = () => {
 
   const updateOrderStatus = async (orderId: string, status: string) => {
     try {
-      const { error } = await supabase
-        .from('orders')
-        .update({ status })
-        .eq('id', orderId);
+      const { error } = await supabase.rpc('update_order_status', {
+        order_uuid: orderId,
+        new_status: status
+      });
 
       if (error) {
         console.error('Error updating order status:', error);
