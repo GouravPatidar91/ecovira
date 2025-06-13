@@ -1,10 +1,11 @@
+
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { ShoppingCart, Menu, X, User, LogOut, Package } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useCart } from "@/contexts/CartContext";
 import { useAuth } from "@/contexts/AuthContext";
-import CartSheet from "./CartSheet";
+import { CartSheet } from "./CartSheet";
 import {
   DropdownMenu,
   DropdownMenuContent,
