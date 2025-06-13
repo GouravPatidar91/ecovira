@@ -2,7 +2,6 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { useCart } from "@/contexts/CartContext";
 import { CartSheet } from "@/components/CartSheet";
 import {
   Home,
@@ -12,6 +11,7 @@ import {
   LogOut,
   ShoppingBag,
   MessageCircle,
+  Package,
 } from "lucide-react";
 import {
   Sheet,
@@ -32,7 +32,6 @@ const NavBar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
-  const { clearCart } = useCart();
   const { toast } = useToast();
 
   const toggleMenu = () => {
@@ -42,7 +41,6 @@ const NavBar = () => {
   const handleSignOut = async () => {
     try {
       await signOut();
-      clearCart();
       navigate("/auth");
     } catch (error) {
       toast({
@@ -78,6 +76,12 @@ const NavBar = () => {
       href: "/farmers",
       icon: <User className="h-4 w-4" />,
       requireAuth: false,
+    },
+    {
+      name: "My Orders",
+      href: "/my-orders",
+      icon: <Package className="h-4 w-4" />,
+      requireAuth: true,
     },
     {
       name: "Dashboard",
@@ -141,6 +145,10 @@ const NavBar = () => {
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => navigate("/my-orders")}>
+                  <Package className="mr-2 h-4 w-4" />
+                  My Orders
+                </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => navigate("/dashboard/products")}>Dashboard</DropdownMenuItem>
                 <DropdownMenuItem onClick={() => navigate("/chats")}>Messages</DropdownMenuItem>
                 <DropdownMenuSeparator />

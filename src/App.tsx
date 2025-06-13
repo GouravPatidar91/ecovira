@@ -13,6 +13,7 @@ import Farmers from "@/pages/Farmers";
 import NotFound from "@/pages/NotFound";
 import Payment from "@/pages/Payment";
 import OrderPaymentProcess from "@/pages/OrderPaymentProcess";
+import MyOrders from "@/pages/MyOrders";
 import Products from "@/pages/dashboard/Products";
 import Orders from "@/pages/dashboard/Orders";
 import ProductForm from "@/pages/dashboard/ProductForm";
@@ -43,6 +44,7 @@ function App() {
                 <Route path="/farmers" element={<Farmers />} />
                 <Route path="/payment" element={<Payment />} />
                 <Route path="/order-payment" element={<OrderPaymentProcess />} />
+                <Route path="/my-orders" element={<MyOrders />} />
                 <Route path="/chats" element={<ChatList />} />
                 <Route path="/chat" element={<Chat />} />
 

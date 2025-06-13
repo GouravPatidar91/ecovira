@@ -418,6 +418,18 @@ export type Database = {
         Args: { p_order_id: string; p_items: Json }
         Returns: undefined
       }
+      get_buyer_orders: {
+        Args: { buyer_user_id: string }
+        Returns: {
+          id: string
+          created_at: string
+          total_amount: number
+          status: string
+          payment_status: string
+          shipping_address: string
+          order_items: Json
+        }[]
+      }
       get_conversation_messages: {
         Args: { conv_id: string }
         Returns: {
