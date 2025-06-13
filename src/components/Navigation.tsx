@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { ShoppingCart, Menu, X, User, LogOut, Package } from "lucide-react";
@@ -16,11 +15,11 @@ import {
 
 const Navigation = () => {
   const [isOpen, setIsOpen] = useState(false);
-  const { items } = useCart();
+  const { state } = useCart();
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
 
-  const itemCount = items.reduce((sum, item) => sum + item.quantity, 0);
+  const itemCount = state.items.reduce((sum, item) => sum + item.quantity, 0);
 
   const handleSignOut = async () => {
     await signOut();
