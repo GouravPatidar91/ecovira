@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { ShoppingCart, Menu, X, User, LogOut, Package } from "lucide-react";
@@ -62,16 +63,7 @@ const Navigation = () => {
                     My Orders
                   </Button>
                 </Link>
-                <CartSheet>
-                  <Button variant="ghost" size="sm" className="relative">
-                    <ShoppingCart className="h-5 w-5" />
-                    {itemCount > 0 && (
-                      <span className="absolute -top-2 -right-2 bg-market-600 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                        {itemCount}
-                      </span>
-                    )}
-                  </Button>
-                </CartSheet>
+                <CartSheet />
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" size="sm">
