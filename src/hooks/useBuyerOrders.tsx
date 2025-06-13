@@ -53,7 +53,14 @@ export const useBuyerOrders = () => {
       }
 
       console.log('Fetched orders:', data);
-      setOrders(data || []);
+      
+      // Transform the data to match our TypeScript interface
+      const transformedOrders: BuyerOrder[] = (data || []).map((order: any) => ({
+        ...order,
+        order_items: Array.isArray(order.order_items) ? order.order_items : []
+      }));
+      
+      setOrders(transformedOrders);
     } catch (error) {
       console.error('Error in fetchOrders:', error);
       toast({
