@@ -1,93 +1,72 @@
 
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
-import { Loader2, CreditCard } from "lucide-react";
+import { CreditCard } from "lucide-react";
+import PaymentDetailsModal from "./PaymentDetailsModal";
+
+interface OrderItem {
+  id: string;
+  quantity: number;
+  product_name: string;
+  product_unit: string;
+  unit_price: number;
+  total_price: number;
+  seller_name: string;
+}
 
 interface PayOrderButtonProps {
   orderId: string;
   totalAmount: number;
   shippingAddress: string;
+  orderItems: OrderItem[];
+  orderDate: string;
   onPaymentComplete?: () => void;
 }
 
 const PayOrderButton = ({ 
   orderId, 
   totalAmount, 
-  shippingAddress, 
+  shippingAddress,
+  orderItems,
+  orderDate,
   onPaymentComplete 
 }: PayOrderButtonProps) => {
-  const [isProcessing, setIsProcessing] = useState(false);
-  const { toast } = useToast();
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const handlePayment = async () => {
-    try {
-      setIsProcessing(true);
-      
-      // Create payment session for this specific order
-      const { data, error } = await supabase.functions.invoke('create-order-payment', {
-        body: {
-          orderId,
-          amount: totalAmount,
-          shippingAddress
-        }
-      });
+  const handlePayClick = () => {
+    setIsModalOpen(true);
+  };
 
-      if (error) {
-        console.error('Payment creation error:', error);
-        toast({
-          title: "Payment Error",
-          description: "Failed to create payment session. Please try again.",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      if (data?.url) {
-        // Open payment in new tab
-        window.open(data.url, '_blank');
-        
-        toast({
-          title: "Payment Session Created",
-          description: "A new tab has opened for payment. Complete your payment there.",
-        });
-
-        // Optional: Call onPaymentComplete callback
-        if (onPaymentComplete) {
-          onPaymentComplete();
-        }
-      }
-    } catch (error) {
-      console.error('Error creating payment:', error);
-      toast({
-        title: "Error",
-        description: "An unexpected error occurred. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsProcessing(false);
-    }
+  const handleModalClose = () => {
+    setIsModalOpen(false);
   };
 
   return (
-    <Button 
-      onClick={handlePayment}
-      disabled={isProcessing}
-      className="w-full sm:w-auto"
-    >
-      {isProcessing ? (
-        <>
-          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-          Creating Payment...
-        </>
-      ) : (
-        <>
-          <CreditCard className="mr-2 h-4 w-4" />
-          Pay ${totalAmount.toFixed(2)}
-        </>
-      )}
-    </Button>
+    <>
+      <Button 
+        onClick={handlePayClick}
+        className="w-full sm:w-auto"
+      >
+        <CreditCard className="mr-2 h-4 w-4" />
+        Pay ${totalAmount.toFixed(2)}
+      </Button>
+
+      <PaymentDetailsModal
+        isOpen={isModalOpen}
+        onClose={handleModalClose}
+        orderId={orderId}
+        totalAmount={totalAmount}
+        shippingAddress={shippingAddress}
+        orderItems={orderItems}
+        orderDate={orderDate}
+        onPaymentComplete={() => {
+          if (onPaymentComplete) {
+            onPaymentComplete();
+          }
+          handleModalClose();
+        }}
+      />
+    </>
   );
 };
 

@@ -153,6 +153,8 @@ const MyOrders = () => {
                               orderId={order.id}
                               totalAmount={order.total_amount}
                               shippingAddress={order.shipping_address || ''}
+                              orderItems={order.order_items || []}
+                              orderDate={order.created_at}
                               onPaymentComplete={() => refetch()}
                             />
                           </div>
