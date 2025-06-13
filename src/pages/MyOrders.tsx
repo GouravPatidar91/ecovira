@@ -7,10 +7,11 @@ import { Separator } from "@/components/ui/separator";
 import { Loader2, Package, Calendar, MapPin, CreditCard } from "lucide-react";
 import { format } from "date-fns";
 import Navigation from "@/components/Navigation";
+import PayOrderButton from "@/components/orders/PayOrderButton";
 
 const MyOrders = () => {
   const { user } = useAuth();
-  const { orders, isLoading } = useBuyerOrders();
+  const { orders, isLoading, refetch } = useBuyerOrders();
 
   if (!user) {
     return (
@@ -54,6 +55,10 @@ const MyOrders = () => {
       default:
         return 'bg-gray-100 text-gray-800';
     }
+  };
+
+  const shouldShowPayButton = (order: any) => {
+    return order.status === 'processing' && order.payment_status === 'pending';
   };
 
   return (
@@ -141,6 +146,17 @@ const MyOrders = () => {
                           <span className="text-gray-600">Total Amount:</span>
                           <span className="font-medium">${order.total_amount.toFixed(2)}</span>
                         </div>
+                        
+                        {shouldShowPayButton(order) && (
+                          <div className="pt-2">
+                            <PayOrderButton
+                              orderId={order.id}
+                              totalAmount={order.total_amount}
+                              shippingAddress={order.shipping_address || ''}
+                              onPaymentComplete={() => refetch()}
+                            />
+                          </div>
+                        )}
                         
                         <Separator />
                         
