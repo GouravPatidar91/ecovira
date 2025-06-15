@@ -1,7 +1,8 @@
-
 import { ReactNode, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { CartProvider } from "@/contexts/CartContext";
+import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
+import DashboardSidebar from "@/components/DashboardSidebar";
 
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -33,19 +34,19 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
 
   return (
     <CartProvider>
-      <div className="min-h-screen flex bg-gradient-to-br from-zinc-900 via-market-900/90 to-market-800/90">
-        <div className="container mx-auto px-4 py-8">
-          <div className="grid grid-cols-12 gap-7">
-            {/* Sidebar removed */}
-            {/* Main Content area - now full width */}
-            <div className="col-span-12">
-              <div className="p-7">
+      <SidebarProvider>
+        <div className="min-h-screen flex w-full bg-gradient-to-br from-zinc-900 via-market-900/90 to-market-800/90">
+          <DashboardSidebar />
+          <main className="flex-1 flex flex-col">
+            <div className="p-4">
+              <SidebarTrigger className="mb-4 md:hidden" />
+              <div className="container mx-auto px-1 md:px-6 py-4">
                 {children}
               </div>
             </div>
-          </div>
+          </main>
         </div>
-      </div>
+      </SidebarProvider>
     </CartProvider>
   );
 };
