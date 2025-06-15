@@ -1,5 +1,5 @@
 
-import FarmerCard from "./FarmerCard";
+import SellerCard from "./SellerCard";
 import { Seller } from "../types";
 
 interface FarmersListProps {
@@ -27,7 +27,7 @@ const FarmersList = ({ sellers, loading }: FarmersListProps) => {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       {sellers.map((seller) => (
-        <FarmerCard key={seller.id} seller={seller} />
+        <SellerCard key={seller.id} seller={seller} />
       ))}
     </div>
   );
