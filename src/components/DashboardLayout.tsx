@@ -1,15 +1,17 @@
 
 import { ReactNode, useEffect, useState } from "react";
+import { Button } from "./ui/button";
+import { useNavigate } from "react-router-dom";
+import { Package, List, ShoppingBag, FileCheck } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { CartProvider } from "@/contexts/CartContext";
-import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
-import DashboardSidebar from "@/components/DashboardSidebar";
 
 interface DashboardLayoutProps {
   children: ReactNode;
 }
 
 const DashboardLayout = ({ children }: DashboardLayoutProps) => {
+  const navigate = useNavigate();
   const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
@@ -35,22 +37,53 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
 
   return (
     <CartProvider>
-      <SidebarProvider>
-        <div className="min-h-screen flex w-full bg-gradient-to-br from-zinc-900 via-market-900/90 to-market-800/90">
-          <DashboardSidebar />
-          <main className="flex-1 flex flex-col">
-            <div className="p-2 sm:p-4 w-full min-w-0">
-              <SidebarTrigger className="mb-3 md:hidden" />
-              <div className="w-full max-w-full px-1 sm:px-4 md:px-8 py-3 sm:py-4 overflow-x-auto">
-                {/* Ensure children content stays within the container on all screens */}
-                <div className="min-w-0 break-words">
-                  {children}
-                </div>
-              </div>
+      <div className="min-h-screen bg-gray-50">
+        <div className="container mx-auto px-4 py-8">
+          <div className="grid grid-cols-12 gap-6">
+            {/* Sidebar */}
+            <div className="col-span-12 md:col-span-3 space-y-2">
+              <Button 
+                variant="ghost" 
+                className="w-full justify-start"
+                onClick={() => navigate("/dashboard/products")}
+              >
+                <Package className="mr-2 h-4 w-4" />
+                Products
+              </Button>
+              <Button 
+                variant="ghost" 
+                className="w-full justify-start"
+                onClick={() => navigate("/dashboard/orders")}
+              >
+                <List className="mr-2 h-4 w-4" />
+                Orders
+              </Button>
+              <Button 
+                variant="ghost" 
+                className="w-full justify-start"
+                onClick={() => navigate("/dashboard/inventory")}
+              >
+                <ShoppingBag className="mr-2 h-4 w-4" />
+                Inventory
+              </Button>
+              {isAdmin && (
+                <Button 
+                  variant="ghost" 
+                  className="w-full justify-start"
+                  onClick={() => navigate("/dashboard/admin-verification")}
+                >
+                  <FileCheck className="mr-2 h-4 w-4" />
+                  Verifications
+                </Button>
+              )}
             </div>
-          </main>
+            {/* Main Content */}
+            <div className="col-span-12 md:col-span-9">
+              {children}
+            </div>
+          </div>
         </div>
-      </SidebarProvider>
+      </div>
     </CartProvider>
   );
 };
