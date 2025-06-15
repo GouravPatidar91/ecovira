@@ -12,12 +12,9 @@ const Inventory = () => {
         </div>
 
         <div className="grid grid-cols-1 gap-7">
-          <div className="rounded-2xl bg-gradient-to-br from-zinc-900/80 via-market-800/50 to-zinc-900/85 border border-market-500/20 shadow-xl glassmorphic p-3">
-            <SalesChart />
-          </div>
-          <div className="rounded-2xl bg-gradient-to-br from-zinc-900/80 via-market-800/50 to-zinc-900/85 border border-market-500/20 shadow-xl glassmorphic p-3">
-            <InventoryStatus />
-          </div>
+          {/* Removed unnecessary inner card wrappers */}
+          <SalesChart />
+          <InventoryStatus />
         </div>
       </div>
     </DashboardLayout>

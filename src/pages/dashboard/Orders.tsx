@@ -1,4 +1,3 @@
-
 import DashboardLayout from "@/components/DashboardLayout";
 import OrderList from "@/components/dashboard/order/OrderList";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -30,9 +29,7 @@ const Orders = () => {
           </Alert>
         )}
         
-        <div className="rounded-2xl bg-gradient-to-br from-zinc-900/80 via-market-800/50 to-zinc-900/85 border border-market-500/20 shadow-xl glassmorphic p-3">
-          <OrderList />
-        </div>
+        <OrderList />
       </div>
     </DashboardLayout>
   );
