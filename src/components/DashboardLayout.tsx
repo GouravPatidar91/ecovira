@@ -1,3 +1,4 @@
+
 import { ReactNode, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { CartProvider } from "@/contexts/CartContext";
@@ -38,10 +39,13 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
         <div className="min-h-screen flex w-full bg-gradient-to-br from-zinc-900 via-market-900/90 to-market-800/90">
           <DashboardSidebar />
           <main className="flex-1 flex flex-col">
-            <div className="p-4">
-              <SidebarTrigger className="mb-4 md:hidden" />
-              <div className="container mx-auto px-1 md:px-6 py-4">
-                {children}
+            <div className="p-2 sm:p-4 w-full min-w-0">
+              <SidebarTrigger className="mb-3 md:hidden" />
+              <div className="w-full max-w-full px-1 sm:px-4 md:px-8 py-3 sm:py-4 overflow-x-auto">
+                {/* Ensure children content stays within the container on all screens */}
+                <div className="min-w-0 break-words">
+                  {children}
+                </div>
               </div>
             </div>
           </main>
