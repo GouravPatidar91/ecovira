@@ -34,9 +34,20 @@ const productGridMotion = {
     }
   }
 };
+// Fix urban animation variant for Framer Motion
 const productCardMotion = {
   hidden: { y: 60, opacity: 0, scale: 0.98 },
-  visible: { y: 0, opacity: 1, scale: 1, transition: { duration: 0.48, type: "spring", damping: 20, stiffness: 220 }}
+  visible: {
+    y: 0,
+    opacity: 1,
+    scale: 1,
+    transition: {
+      duration: 0.48,
+      type: "spring" as const,
+      damping: 20,
+      stiffness: 220
+    }
+  }
 };
 
 const Index = () => {

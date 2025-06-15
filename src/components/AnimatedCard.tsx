@@ -7,11 +7,12 @@ interface AnimatedCardProps {
   className?: string;
 }
 
+// Use literal type for transition
 const animation = {
   initial: { y: 40, opacity: 0, scale: 0.94 },
   animate: { y: 0, opacity: 1, scale: 1 },
   whileHover: { scale: 1.04, boxShadow: "0 8px 32px 0 rgba(31,38,135,0.2)" },
-  transition: { duration: 0.42, type: "spring", damping: 20, stiffness: 250 },
+  transition: { duration: 0.42, type: "spring" as const, damping: 20, stiffness: 250 },
 };
 
 const AnimatedCard: React.FC<AnimatedCardProps> = ({ children, className }) => (

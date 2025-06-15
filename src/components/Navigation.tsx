@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -30,7 +29,16 @@ import { motion } from "framer-motion";
 
 const motionVariants = {
   hidden: { y: -30, opacity: 0 },
-  visible: { y: 0, opacity: 1, transition: { type: "spring", stiffness: 320, damping: 22, duration: 0.8 } }
+  visible: {
+    y: 0,
+    opacity: 1,
+    transition: {
+      type: "spring" as const,
+      stiffness: 320,
+      damping: 22,
+      duration: 0.8
+    }
+  }
 };
 
 const NavBar = () => {
