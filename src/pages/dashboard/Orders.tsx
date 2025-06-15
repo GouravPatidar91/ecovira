@@ -12,9 +12,9 @@ const Orders = () => {
     <DashboardLayout>
       <div className="space-y-6">
         <div className="flex justify-between items-center">
-          <h1 className="text-2xl font-semibold">Orders</h1>
+          <h1 className="text-2xl font-extrabold text-market-100 drop-shadow">Orders</h1>
           {newOrdersCount > 0 && (
-            <div className="flex items-center text-market-600">
+            <div className="flex items-center text-market-400">
               <Bell className="h-5 w-5 mr-1" />
               <span>{newOrdersCount} new order{newOrdersCount === 1 ? '' : 's'} to review</span>
             </div>
@@ -22,7 +22,7 @@ const Orders = () => {
         </div>
 
         {newOrdersCount > 0 && (
-          <Alert className="bg-yellow-50 border-yellow-200">
+          <Alert className="bg-yellow-300/10 border-yellow-300/20 rounded-xl shadow">
             <AlertDescription>
               <span className="font-bold">Action Required:</span> You have {newOrdersCount} new {newOrdersCount === 1 ? 'order' : 'orders'} from customers! 
               Please review and either accept or decline them.
@@ -30,7 +30,9 @@ const Orders = () => {
           </Alert>
         )}
         
-        <OrderList />
+        <div className="rounded-2xl bg-gradient-to-br from-zinc-900/80 via-market-800/50 to-zinc-900/85 border border-market-500/20 shadow-xl glassmorphic p-3">
+          <OrderList />
+        </div>
       </div>
     </DashboardLayout>
   );

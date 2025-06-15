@@ -130,12 +130,12 @@ const ProductForm = () => {
     <DashboardLayout>
       <div className="space-y-6">
         <div className="flex justify-between items-center">
-          <h1 className="text-2xl font-semibold">
+          <h1 className="text-2xl font-extrabold text-market-100 drop-shadow">
             {id ? "Edit Product" : "New Product"}
           </h1>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6 bg-white p-6 rounded-lg shadow">
+        <form onSubmit={handleSubmit} className="space-y-6 bg-gradient-to-br from-zinc-900/80 via-market-800/45 to-zinc-900/90 p-8 rounded-2xl shadow-2xl border border-market-600/15 glassmorphic">
           <ProductDetails
             formData={formData}
             onChange={handleChange}
@@ -158,12 +158,13 @@ const ProductForm = () => {
               type="button"
               variant="outline"
               onClick={() => navigate('/dashboard/products')}
+              className="text-market-100"
             >
               Cancel
             </Button>
             <Button 
               type="submit"
-              className="bg-market-500 hover:bg-market-600"
+              className="bg-market-500 hover:bg-market-600 text-white glassmorphic shadow-xl"
               disabled={isLoading}
             >
               {isLoading ? (

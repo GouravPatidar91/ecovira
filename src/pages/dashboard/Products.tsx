@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import DashboardLayout from "@/components/DashboardLayout";
@@ -127,7 +126,7 @@ const Products = () => {
     return (
       <DashboardLayout>
         <div className="flex items-center justify-center h-64">
-          <Loader2 className="h-8 w-8 animate-spin" />
+          <Loader2 className="h-8 w-8 animate-spin text-market-400" />
         </div>
       </DashboardLayout>
     );
@@ -137,17 +136,17 @@ const Products = () => {
     <DashboardLayout>
       <div className="space-y-6">
         <div className="flex justify-between items-center">
-          <h1 className="text-2xl font-semibold">Products</h1>
+          <h1 className="text-2xl font-extrabold text-market-100 drop-shadow">Products</h1>
           <Button 
             onClick={() => navigate("/dashboard/products/new")}
-            className="bg-market-500 hover:bg-market-600"
+            className="bg-market-600 hover:bg-market-700 text-white glassmorphic shadow-xl"
           >
             <Plus className="mr-2 h-4 w-4" />
             Add Product
           </Button>
         </div>
 
-        <div className="bg-white rounded-lg shadow">
+        <div className="rounded-2xl bg-gradient-to-br from-zinc-900/80 via-market-800/50 to-zinc-900/85 border border-market-500/20 shadow-xl glassmorphic p-3">
           <Table>
             <TableHeader>
               <TableRow>
