@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -98,20 +97,20 @@ const NavBar = () => {
   ];
 
   return (
-    <div className="bg-white border-b shadow-sm sticky top-0 z-50">
-      <div className="container mx-auto px-4 h-16 flex items-center justify-between">
-        <Link to="/" className="font-bold text-xl text-gray-800">
+    <nav className="sticky top-0 z-50 bg-glass-card/80 backdrop-blur-lg border-b border-agri-100 shadow-md">
+      <div className="container mx-auto h-16 flex items-center justify-between">
+        <Link to="/" className="font-black text-2xl font-agri flex items-center gap-2 text-agri-700">
+          <span role="img" aria-label="Sprout" className="text-agri-500">🌱</span>
           AgriChain
         </Link>
-
-        <div className="hidden md:flex items-center space-x-4">
+        <div className="hidden md:flex items-center gap-3">
           {navigationItems.map(
             (item, index) =>
               (!item.requireAuth || user) && (
                 <Link
                   key={index}
                   to={item.href}
-                  className="text-gray-600 hover:text-gray-900 transition-colors duration-200 flex items-center space-x-2"
+                  className="flex items-center gap-2 py-1.5 px-3 rounded-lg text-agri-700 hover:bg-agri-100 font-semibold transition"
                 >
                   {item.icon}
                   <span>{item.name}</span>
@@ -119,23 +118,23 @@ const NavBar = () => {
               )
           )}
         </div>
-
-        <div className="flex items-center space-x-4">
+        <div className="flex items-center gap-2">
           <div className="hidden md:block">
             <CartSheet />
           </div>
-
           {user ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="relative w-8 h-8 rounded-full">
+                <Button variant="ghost" className="relative w-9 h-9 rounded-full border border-agri-200 bg-agri-100 hover:bg-agri-200 shadow-soft ring-1 ring-agri-100/60">
                   <Avatar className="w-8 h-8">
                     <AvatarImage src={userProfile?.avatar_url} />
-                    <AvatarFallback>{userProfile?.full_name?.charAt(0) || user.email?.charAt(0) || '?'}</AvatarFallback>
+                    <AvatarFallback>
+                      {userProfile?.full_name?.charAt(0) || user.email?.charAt(0) || "?"}
+                    </AvatarFallback>
                   </Avatar>
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-56" align="end" forceMount>
+              <DropdownMenuContent className="w-56 bg-white/90 backdrop-blur-lg shadow-xl" align="end" forceMount>
                 <DropdownMenuLabel className="font-normal">
                   <div className="flex flex-col space-y-1">
                     <p className="text-sm font-medium leading-none">{userProfile?.full_name || user.email}</p>
@@ -159,37 +158,34 @@ const NavBar = () => {
               </DropdownMenuContent>
             </DropdownMenu>
           ) : (
-            <div className="hidden md:block">
-              <Link
-                to="/auth"
-                className="text-gray-600 hover:text-gray-900 transition-colors duration-200"
-              >
-                Sign In
-              </Link>
-            </div>
+            <Link
+              to="/auth"
+              className="py-1 px-4 bg-agri-500 hover:bg-agri-600 text-white rounded-lg font-bold transition"
+            >
+              Sign In
+            </Link>
           )}
-
           <Sheet>
             <SheetTrigger asChild>
-              <Button variant="outline" size="icon" className="md:hidden">
-                <Menu className="h-4 w-4" />
+              <Button variant="outline" size="icon" className="md:hidden border-agri-200">
+                <Menu className="h-5 w-5 text-agri-500" />
               </Button>
             </SheetTrigger>
-            <SheetContent side="left" className="w-full sm:w-64">
+            <SheetContent side="left" className="bg-glass-card w-full sm:w-64 border-r border-agri-200">
               <SheetHeader>
                 <SheetTitle>Menu</SheetTitle>
                 <SheetDescription>
                   Explore our site and manage your account.
                 </SheetDescription>
               </SheetHeader>
-              <div className="py-4">
+              <div className="py-4 space-y-2">
                 {navigationItems.map(
                   (item, index) =>
                     (!item.requireAuth || user) && (
                       <Link
                         key={index}
                         to={item.href}
-                        className="block py-2 text-gray-600 hover:text-gray-900 transition-colors duration-200"
+                        className="block py-2 px-3 rounded text-agri-700 hover:bg-agri-100 font-semibold"
                       >
                         {item.name}
                       </Link>
@@ -198,7 +194,7 @@ const NavBar = () => {
                 {!user ? (
                   <Link
                     to="/auth"
-                    className="block py-2 text-gray-600 hover:text-gray-900 transition-colors duration-200"
+                    className="block py-2 px-3 rounded text-agri-700 hover:bg-agri-100 font-semibold"
                   >
                     Sign In
                   </Link>
@@ -212,7 +208,7 @@ const NavBar = () => {
           </Sheet>
         </div>
       </div>
-    </div>
+    </nav>
   );
 };
 
