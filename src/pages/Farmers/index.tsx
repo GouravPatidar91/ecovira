@@ -18,6 +18,7 @@ const Farmers = () => {
   const { toast } = useToast();
   const [isSeller, setIsSeller] = useState(false);
   const [isSellerPanelOpen, setIsSellerPanelOpen] = useState(false);
+  const [userProfile, setUserProfile] = useState<Seller | null>(null);
 
   useEffect(() => {
     fetchSellers();
@@ -30,12 +31,16 @@ const Farmers = () => {
       if (session) {
         const { data, error } = await supabase
           .from('profiles')
-          .select('role')
+          .select('id, business_name, location, bio, role, avatar_url')
           .eq('id', session.user.id)
           .single();
 
         if (error) throw error;
-        setIsSeller(data.role === 'farmer');
+        
+        if (data) {
+          setUserProfile(data);
+          setIsSeller(data.role === 'farmer');
+        }
       }
     } catch (error) {
       console.error('Error checking seller status:', error);
@@ -47,7 +52,8 @@ const Farmers = () => {
       const { data, error } = await supabase
         .from('profiles')
         .select('id, business_name, location, bio, role, avatar_url')
-        .eq('role', 'farmer');
+        .eq('role', 'farmer')
+        .eq('verification_status', 'verified');
 
       if (error) throw error;
       setSellers(data || []);
@@ -60,6 +66,11 @@ const Farmers = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleAvatarChange = () => {
+    checkSellerStatus();
+    fetchSellers();
   };
 
   const handleContinueToRegistration = async () => {
@@ -131,7 +142,9 @@ const Farmers = () => {
       {/* Sellers Section */}
       <section className="py-12 px-4">
         <div className="container mx-auto max-w-6xl">
-          {isSeller && <SellerDashboard />}
+          {isSeller && userProfile && (
+            <SellerDashboard userProfile={userProfile} onAvatarChange={handleAvatarChange} />
+          )}
           <FarmersList sellers={sellers} loading={loading} />
         </div>
       </section>
