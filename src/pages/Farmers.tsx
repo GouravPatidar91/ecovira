@@ -1,4 +1,3 @@
-
 import Navigation from "@/components/Navigation";
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
@@ -19,6 +18,7 @@ const Farmers = () => {
   const [isSeller, setIsSeller] = useState(false);
   const [isSellerPanelOpen, setIsSellerPanelOpen] = useState(false);
   const [verificationStatus, setVerificationStatus] = useState<string | null>(null);
+  const [userProfile, setUserProfile] = useState<Seller | null>(null);
 
   useEffect(() => {
     fetchSellers();
@@ -31,21 +31,22 @@ const Farmers = () => {
       if (session) {
         const { data, error } = await supabase
           .from('profiles')
-          .select('role, verification_status')
+          .select('id, business_name, location, bio, role, avatar_url, verification_status')
           .eq('id', session.user.id)
           .single();
 
         if (error) throw error;
         
+        setUserProfile(data);
         setIsSeller(data.role === 'farmer');
         setVerificationStatus(data.verification_status);
         
-        // If verification is pending, show a message
-        if (data.verification_status === 'pending') {
+        if (data.verification_status === 'pending' && !sessionStorage.getItem('pending_toast_shown')) {
           toast({
             title: "Verification Pending",
             description: "Your seller verification is still under review.",
           });
+          sessionStorage.setItem('pending_toast_shown', 'true');
         }
       }
     } catch (error) {
@@ -113,6 +114,11 @@ const Farmers = () => {
     setIsSellerPanelOpen(false);
   };
 
+  const handleAvatarChange = () => {
+    fetchSellers();
+    checkSellerStatus();
+  };
+
   return (
     <CartProvider>
       <div className="min-h-screen bg-gray-50">
@@ -125,7 +131,9 @@ const Farmers = () => {
 
         <section className="py-12 px-4">
           <div className="container mx-auto max-w-6xl">
-            {isSeller && verificationStatus === 'verified' && <SellerDashboard />}
+            {isSeller && verificationStatus === 'verified' && userProfile && (
+              <SellerDashboard userProfile={userProfile} onAvatarChange={handleAvatarChange} />
+            )}
             {isSeller && verificationStatus === 'pending' && (
               <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 mb-8">
                 <h2 className="text-lg font-semibold text-yellow-800">Verification Pending</h2>
