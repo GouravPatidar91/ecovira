@@ -77,9 +77,9 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
                 </Button>
               )}
             </div>
-            {/* Main Content */}
+            {/* Main Content - FLATTENED: remove extra card styling, just a minimal container */}
             <div className="col-span-12 md:col-span-9">
-              <div className="bg-gradient-to-br from-zinc-900/80 via-market-800/65 to-zinc-900/90 rounded-2xl shadow-xl border border-market-600/15 p-7 glassmorphic backdrop-blur-lg">
+              <div className="p-7">
                 {children}
               </div>
             </div>
