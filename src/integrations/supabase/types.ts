@@ -7,504 +7,23 @@ export type Json =
   | Json[]
 
 export type Database = {
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
+  __InternalSupabase: {
+    PostgrestVersion: "14.1"
+  }
   public: {
     Tables: {
-      cart_items: {
-        Row: {
-          created_at: string
-          id: string
-          product_id: string
-          quantity: number
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          product_id: string
-          quantity: number
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          product_id?: string
-          quantity?: number
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "cart_items_product_id_fkey"
-            columns: ["product_id"]
-            isOneToOne: false
-            referencedRelation: "products"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "cart_items_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      chat_conversations: {
-        Row: {
-          buyer_id: string
-          created_at: string
-          id: string
-          product_id: string | null
-          seller_id: string
-          updated_at: string | null
-        }
-        Insert: {
-          buyer_id: string
-          created_at?: string
-          id?: string
-          product_id?: string | null
-          seller_id: string
-          updated_at?: string | null
-        }
-        Update: {
-          buyer_id?: string
-          created_at?: string
-          id?: string
-          product_id?: string | null
-          seller_id?: string
-          updated_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "chat_conversations_product_id_fkey"
-            columns: ["product_id"]
-            isOneToOne: false
-            referencedRelation: "products"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      chat_messages: {
-        Row: {
-          conversation_id: string
-          created_at: string
-          id: string
-          is_read: boolean
-          message: string
-          sender_id: string
-        }
-        Insert: {
-          conversation_id: string
-          created_at?: string
-          id?: string
-          is_read?: boolean
-          message: string
-          sender_id: string
-        }
-        Update: {
-          conversation_id?: string
-          created_at?: string
-          id?: string
-          is_read?: boolean
-          message?: string
-          sender_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "chat_messages_conversation_id_fkey"
-            columns: ["conversation_id"]
-            isOneToOne: false
-            referencedRelation: "chat_conversations"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      order_items: {
-        Row: {
-          created_at: string
-          id: string
-          order_id: string
-          product_id: string | null
-          quantity: number
-          total_price: number
-          unit_price: number
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          order_id: string
-          product_id?: string | null
-          quantity: number
-          total_price: number
-          unit_price: number
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          order_id?: string
-          product_id?: string | null
-          quantity?: number
-          total_price?: number
-          unit_price?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: "order_items_order_id_fkey"
-            columns: ["order_id"]
-            isOneToOne: false
-            referencedRelation: "orders"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "order_items_product_id_fkey"
-            columns: ["product_id"]
-            isOneToOne: false
-            referencedRelation: "products"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      orders: {
-        Row: {
-          buyer_id: string
-          created_at: string
-          id: string
-          payment_status: string | null
-          shipping_address: string | null
-          status: string | null
-          total_amount: number
-          updated_at: string
-        }
-        Insert: {
-          buyer_id: string
-          created_at?: string
-          id?: string
-          payment_status?: string | null
-          shipping_address?: string | null
-          status?: string | null
-          total_amount: number
-          updated_at?: string
-        }
-        Update: {
-          buyer_id?: string
-          created_at?: string
-          id?: string
-          payment_status?: string | null
-          shipping_address?: string | null
-          status?: string | null
-          total_amount?: number
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "orders_buyer_id_fkey"
-            columns: ["buyer_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      payment_transactions: {
-        Row: {
-          amount: number
-          created_at: string
-          id: string
-          metadata: Json | null
-          order_id: string
-          payment_id: string
-          payment_method: string
-          status: string
-          transaction_id: string
-        }
-        Insert: {
-          amount: number
-          created_at?: string
-          id?: string
-          metadata?: Json | null
-          order_id: string
-          payment_id: string
-          payment_method: string
-          status?: string
-          transaction_id: string
-        }
-        Update: {
-          amount?: number
-          created_at?: string
-          id?: string
-          metadata?: Json | null
-          order_id?: string
-          payment_id?: string
-          payment_method?: string
-          status?: string
-          transaction_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "payment_transactions_order_id_fkey"
-            columns: ["order_id"]
-            isOneToOne: false
-            referencedRelation: "orders"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      products: {
-        Row: {
-          category: string | null
-          certification_info: string | null
-          created_at: string
-          description: string | null
-          id: string
-          images: string[] | null
-          is_organic: boolean | null
-          minimum_order: number | null
-          name: string
-          price: number
-          quantity_available: number
-          seller_id: string
-          status: string | null
-          unit: string
-          updated_at: string
-        }
-        Insert: {
-          category?: string | null
-          certification_info?: string | null
-          created_at?: string
-          description?: string | null
-          id?: string
-          images?: string[] | null
-          is_organic?: boolean | null
-          minimum_order?: number | null
-          name: string
-          price: number
-          quantity_available: number
-          seller_id: string
-          status?: string | null
-          unit: string
-          updated_at?: string
-        }
-        Update: {
-          category?: string | null
-          certification_info?: string | null
-          created_at?: string
-          description?: string | null
-          id?: string
-          images?: string[] | null
-          is_organic?: boolean | null
-          minimum_order?: number | null
-          name?: string
-          price?: number
-          quantity_available?: number
-          seller_id?: string
-          status?: string | null
-          unit?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "products_seller_id_fkey"
-            columns: ["seller_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      profiles: {
-        Row: {
-          avatar_url: string | null
-          bio: string | null
-          business_name: string | null
-          created_at: string
-          full_name: string | null
-          id: string
-          location: string | null
-          role: Database["public"]["Enums"]["user_role"] | null
-          updated_at: string
-          verification_document: string | null
-          verification_status: string | null
-        }
-        Insert: {
-          avatar_url?: string | null
-          bio?: string | null
-          business_name?: string | null
-          created_at?: string
-          full_name?: string | null
-          id: string
-          location?: string | null
-          role?: Database["public"]["Enums"]["user_role"] | null
-          updated_at?: string
-          verification_document?: string | null
-          verification_status?: string | null
-        }
-        Update: {
-          avatar_url?: string | null
-          bio?: string | null
-          business_name?: string | null
-          created_at?: string
-          full_name?: string | null
-          id?: string
-          location?: string | null
-          role?: Database["public"]["Enums"]["user_role"] | null
-          updated_at?: string
-          verification_document?: string | null
-          verification_status?: string | null
-        }
-        Relationships: []
-      }
-      reviews: {
-        Row: {
-          comment: string | null
-          created_at: string
-          id: string
-          product_id: string
-          rating: number
-          reviewer_id: string
-          updated_at: string
-        }
-        Insert: {
-          comment?: string | null
-          created_at?: string
-          id?: string
-          product_id: string
-          rating: number
-          reviewer_id: string
-          updated_at?: string
-        }
-        Update: {
-          comment?: string | null
-          created_at?: string
-          id?: string
-          product_id?: string
-          rating?: number
-          reviewer_id?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "reviews_product_id_fkey"
-            columns: ["product_id"]
-            isOneToOne: false
-            referencedRelation: "products"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "reviews_reviewer_id_fkey"
-            columns: ["reviewer_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
+      [_ in never]: never
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      create_order: {
-        Args: {
-          p_buyer_id: string
-          p_total_amount: number
-          p_shipping_address: string
-          p_order_id?: string
-        }
-        Returns: string
-      }
-      create_order_items: {
-        Args: { p_order_id: string; p_items: Json }
-        Returns: undefined
-      }
-      get_buyer_orders: {
-        Args: { buyer_user_id: string }
-        Returns: {
-          id: string
-          created_at: string
-          total_amount: number
-          status: string
-          payment_status: string
-          shipping_address: string
-          order_items: Json
-        }[]
-      }
-      get_conversation_messages: {
-        Args: { conv_id: string }
-        Returns: {
-          id: string
-          conversation_id: string
-          sender_id: string
-          message: string
-          is_read: boolean
-          created_at: string
-          sender_name: string
-        }[]
-      }
-      get_order_details: {
-        Args: { p_order_id: string; p_user_id: string }
-        Returns: {
-          id: string
-          buyer_id: string
-          total_amount: number
-          shipping_address: string
-          status: string
-          payment_status: string
-          created_at: string
-        }[]
-      }
-      get_order_items: {
-        Args: { p_order_id: string; p_user_id: string }
-        Returns: {
-          id: string
-          order_id: string
-          product_id: string
-          quantity: number
-          unit_price: number
-          total_price: number
-          created_at: string
-          product_name: string
-          product_unit: string
-        }[]
-      }
-      get_seller_orders: {
-        Args: { seller_user_id: string }
-        Returns: {
-          id: string
-          created_at: string
-          total_amount: number
-          status: string
-          payment_status: string
-          shipping_address: string
-          buyer_id: string
-          buyer_name: string
-          order_items: Json
-        }[]
-      }
-      is_seller_for_order: {
-        Args: { order_uuid: string }
-        Returns: boolean
-      }
-      update_order_status: {
-        Args: { order_uuid: string; new_status: string }
-        Returns: undefined
-      }
-      user_can_view_order: {
-        Args: { order_uuid: string }
-        Returns: boolean
-      }
-      user_can_view_order_item: {
-        Args: { order_item_uuid: string }
-        Returns: boolean
-      }
-      user_is_seller_for_order: {
-        Args: { order_id: string }
-        Returns: boolean
-      }
+      [_ in never]: never
     }
     Enums: {
-      user_role: "admin" | "farmer" | "buyer"
+      [_ in never]: never
     }
     CompositeTypes: {
       [_ in never]: never
@@ -512,21 +31,25 @@ export type Database = {
   }
 }
 
-type DefaultSchema = Database[Extract<keyof Database, "public">]
+type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
+
+type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
 
 export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
-    | { schema: keyof Database },
+    | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
-    schema: keyof Database
+    schema: keyof DatabaseWithoutInternals
   }
-    ? keyof (Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
-        Database[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
     : never = never,
-> = DefaultSchemaTableNameOrOptions extends { schema: keyof Database }
-  ? (Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
-      Database[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
       Row: infer R
     }
     ? R
@@ -544,14 +67,16 @@ export type Tables<
 export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
-    | { schema: keyof Database },
+    | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
-    schema: keyof Database
+    schema: keyof DatabaseWithoutInternals
   }
-    ? keyof Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
     : never = never,
-> = DefaultSchemaTableNameOrOptions extends { schema: keyof Database }
-  ? Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
       Insert: infer I
     }
     ? I
@@ -567,14 +92,16 @@ export type TablesInsert<
 export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
-    | { schema: keyof Database },
+    | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
-    schema: keyof Database
+    schema: keyof DatabaseWithoutInternals
   }
-    ? keyof Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
     : never = never,
-> = DefaultSchemaTableNameOrOptions extends { schema: keyof Database }
-  ? Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
       Update: infer U
     }
     ? U
@@ -590,14 +117,16 @@ export type TablesUpdate<
 export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
-    | { schema: keyof Database },
+    | { schema: keyof DatabaseWithoutInternals },
   EnumName extends DefaultSchemaEnumNameOrOptions extends {
-    schema: keyof Database
+    schema: keyof DatabaseWithoutInternals
   }
-    ? keyof Database[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
     : never = never,
-> = DefaultSchemaEnumNameOrOptions extends { schema: keyof Database }
-  ? Database[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
+> = DefaultSchemaEnumNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
   : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
     ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
     : never
@@ -605,22 +134,22 @@ export type Enums<
 export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
-    | { schema: keyof Database },
+    | { schema: keyof DatabaseWithoutInternals },
   CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
-    schema: keyof Database
+    schema: keyof DatabaseWithoutInternals
   }
-    ? keyof Database[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
     : never = never,
-> = PublicCompositeTypeNameOrOptions extends { schema: keyof Database }
-  ? Database[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+> = PublicCompositeTypeNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
   : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
     ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
     : never
 
 export const Constants = {
   public: {
-    Enums: {
-      user_role: ["admin", "farmer", "buyer"],
-    },
+    Enums: {},
   },
 } as const
