@@ -70,15 +70,14 @@ const AuthForm = () => {
 
       if (signUpError) throw signUpError;
 
-      // Update profile with seller status if signing up as seller
+      // Update user role if signing up as seller
       const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
+      if (session && isSeller) {
+        // Update the user's role to farmer
         const { error: updateError } = await supabase
-          .from('profiles')
-          .update({ 
-            role: isSeller ? 'farmer' : 'buyer'
-          })
-          .eq('id', session.user.id);
+          .from('user_roles')
+          .update({ role: 'farmer' })
+          .eq('user_id', session.user.id);
 
         if (updateError) throw updateError;
       }
