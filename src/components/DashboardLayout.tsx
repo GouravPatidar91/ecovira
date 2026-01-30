@@ -23,10 +23,10 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
         const { data } = await supabase
-          .from('profiles')
+          .from('user_roles')
           .select('role')
-          .eq('id', session.user.id)
-          .single();
+          .eq('user_id', session.user.id)
+          .maybeSingle();
 
         setIsAdmin(data?.role === 'admin');
       }

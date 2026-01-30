@@ -33,15 +33,25 @@ const FarmerRoute = ({ children }: FarmerRouteProps) => {
         return;
       }
 
-      const { data, error } = await supabase
+      // Check role from user_roles table
+      const { data: roleData, error: roleError } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', session.user.id)
+        .maybeSingle();
+
+      if (roleError) throw roleError;
+
+      // Check verification status from profiles
+      const { data: profileData, error: profileError } = await supabase
         .from('profiles')
-        .select('role, verification_status')
+        .select('verification_status')
         .eq('id', session.user.id)
-        .single();
+        .maybeSingle();
 
-      if (error) throw error;
+      if (profileError) throw profileError;
 
-      if (data.role !== 'farmer' || data.verification_status !== 'verified') {
+      if (roleData?.role !== 'farmer' || profileData?.verification_status !== 'verified') {
         toast({
           title: "Access Denied",
           description: "Only verified farmers can access this dashboard",
