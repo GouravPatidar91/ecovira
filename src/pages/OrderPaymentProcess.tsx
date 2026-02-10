@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Loader2, CheckCircle, AlertCircle } from "lucide-react";
@@ -42,11 +43,9 @@ const OrderPaymentProcess = () => {
   const [orderDetails, setOrderDetails] = useState<OrderDetails | null>(null);
   const [error, setError] = useState<string | null>(null);
   
-  // Process URL parameters when the component mounts
   useEffect(() => {
     const fetchOrderAndProcess = async () => {
       try {
-        // Extract order ID from URL parameters
         const params = new URLSearchParams(location.search);
         const id = params.get('orderId');
         
@@ -58,9 +57,7 @@ const OrderPaymentProcess = () => {
         }
         
         setOrderId(id);
-        console.log("Processing order ID:", id);
         
-        // Get the session
         const { data } = await supabase.auth.getSession();
         const session = data.session;
         
@@ -71,52 +68,44 @@ const OrderPaymentProcess = () => {
           return;
         }
 
-        console.log("User authenticated:", session.user.id);
+        // Fetch order directly
+        const { data: orderData, error: orderError } = await supabase
+          .from('orders')
+          .select('*')
+          .eq('id', id)
+          .eq('buyer_id', session.user.id)
+          .maybeSingle();
 
-        // Use the get_order_details RPC function to avoid RLS recursion
-        const { data: orderData, error: orderError } = await supabase.rpc(
-          'get_order_details',
-          { 
-            p_order_id: id,
-            p_user_id: session.user.id 
-          }
-        );
-
-        if (orderError || !orderData || orderData.length === 0) {
-          console.error('Error fetching order via RPC:', orderError);
+        if (orderError || !orderData) {
           setError('Could not retrieve order details - not authorized or order not found');
           setPaymentStatus('failed');
           setIsProcessing(false);
           return;
         }
           
-        console.log("Order details fetched successfully:", orderData[0]);
-        // Set the order details from the RPC result
-        setOrderDetails(orderData[0]);
+        setOrderDetails(orderData);
 
-        // Fetch order items using the new RPC function to avoid RLS recursion
-        const { data: orderItems, error: itemsError } = await supabase.rpc(
-          'get_order_items',
-          {
-            p_order_id: id,
-            p_user_id: session.user.id
-          }
-        );
+        // Fetch order items with product info
+        const { data: items, error: itemsError } = await supabase
+          .from('order_items')
+          .select('*, products(name, unit)')
+          .eq('order_id', id);
           
-        if (itemsError) {
-          console.error('Error fetching order items via RPC:', itemsError);
-        } else {
-          console.log("Order items fetched:", orderItems);
-          // Add order items to the order object
-          setOrderDetails(prevState => {
-            if (prevState) {
-              return { ...prevState, order_items: orderItems || [] };
-            }
-            return prevState;
-          });
+        if (!itemsError && items) {
+          const mappedItems: OrderItem[] = items.map((item: any) => ({
+            id: item.id,
+            order_id: item.order_id,
+            product_id: item.product_id,
+            quantity: item.quantity,
+            unit_price: item.unit_price,
+            total_price: item.total_price,
+            created_at: item.created_at,
+            product_name: item.products?.name || 'Product',
+            product_unit: item.products?.unit || 'unit',
+          }));
+          setOrderDetails(prev => prev ? { ...prev, order_items: mappedItems } : prev);
         }
         
-        // Simulate payment processing
         setTimeout(() => {
           processPayment();
         }, 2000);
@@ -132,97 +121,53 @@ const OrderPaymentProcess = () => {
     fetchOrderAndProcess();
   }, [location.search]);
   
-  // Function to process payment
   const processPayment = async () => {
     try {
       if (!orderDetails || !orderId) {
         throw new Error("Missing order details");
       }
       
-      console.log("Processing payment for order:", orderId);
-      
-      // For demonstration, we'll assume a successful payment
-      // You would integrate with a payment gateway here
-      const isSuccessful = true; // In a real app, this would be the result from payment gateway
+      const isSuccessful = true;
       
       if (isSuccessful) {
-        // Update order status if not already paid
         if (orderDetails.payment_status !== 'paid') {
-          console.log("Updating order status to paid");
           const { error: updateError } = await supabase
             .from('orders')
-            .update({ 
-              payment_status: 'paid',
-              status: 'processing' 
-            })
+            .update({ payment_status: 'paid', status: 'processing' })
             .eq('id', orderId);
             
-          if (updateError) {
-            console.error('Error updating order status:', updateError);
-            throw updateError;
-          }
+          if (updateError) throw updateError;
         }
         
-        // Update product stock for each item using the RPC function results
         if (orderDetails.order_items && orderDetails.order_items.length > 0) {
-          console.log("Updating product quantities for items:", orderDetails.order_items);
           for (const item of orderDetails.order_items) {
             try {
               const { error: updateStockError } = await supabase.functions.invoke(
                 "update_product_quantity", 
-                {
-                  body: {
-                    product_id: item.product_id,
-                    quantity: item.quantity
-                  }
-                }
+                { body: { product_id: item.product_id, quantity: item.quantity } }
               );
-
-              if (updateStockError) {
-                console.error('Error updating product stock:', updateStockError);
-              }
+              if (updateStockError) console.error('Error updating product stock:', updateStockError);
             } catch (error) {
               console.error('Function invocation error:', error);
             }
           }
         }
         
-        // Set status as success
         setPaymentStatus('success');
-        toast({
-          title: "Payment Successful",
-          description: "Your payment has been processed successfully",
-        });
+        toast({ title: "Payment Successful", description: "Your payment has been processed successfully" });
       } else {
-        // Handle payment failure
         setPaymentStatus('failed');
         setError('Payment was declined');
-        toast({
-          title: "Payment Failed",
-          description: "Your payment could not be processed",
-          variant: "destructive",
-        });
+        toast({ title: "Payment Failed", description: "Your payment could not be processed", variant: "destructive" });
       }
     } catch (error) {
       console.error('Payment processing error:', error);
       setPaymentStatus('failed');
       setError('An error occurred while processing your payment');
-      toast({
-        title: "Payment Error",
-        description: "There was a problem processing your payment",
-        variant: "destructive",
-      });
+      toast({ title: "Payment Error", description: "There was a problem processing your payment", variant: "destructive" });
     } finally {
       setIsProcessing(false);
     }
-  };
-
-  const handleReturnToMarket = () => {
-    navigate('/market');
-  };
-
-  const handleViewOrders = () => {
-    navigate('/dashboard/orders');
   };
 
   return (
@@ -237,9 +182,7 @@ const OrderPaymentProcess = () => {
                   <div className="text-center py-12">
                     <Loader2 className="h-12 w-12 animate-spin text-market-600 mx-auto mb-4" />
                     <h2 className="text-2xl font-bold mb-2">Processing Your Payment</h2>
-                    <p className="text-gray-600">
-                      Please wait while we process your payment...
-                    </p>
+                    <p className="text-gray-600">Please wait while we process your payment...</p>
                   </div>
                 ) : paymentStatus === 'success' ? (
                   <div className="text-center py-8">
@@ -247,35 +190,26 @@ const OrderPaymentProcess = () => {
                       <CheckCircle className="h-8 w-8 text-green-600" />
                     </div>
                     <h2 className="text-2xl font-bold mb-2">Payment Successful!</h2>
-                    <p className="text-gray-600 mb-6">
-                      Thank you for your order. Your payment has been processed successfully.
-                    </p>
+                    <p className="text-gray-600 mb-6">Thank you for your order.</p>
                     
                     {orderDetails && (
                       <div className="text-left border-t border-b py-4 my-4">
                         <h3 className="font-semibold text-lg mb-2">Order Summary</h3>
                         <div className="grid grid-cols-2 gap-2">
-                          <p className="text-gray-500">Order ID:</p>
-                          <p>{orderDetails.id}</p>
-                          <p className="text-gray-500">Date:</p>
-                          <p>{new Date(orderDetails.created_at).toLocaleString()}</p>
-                          <p className="text-gray-500">Shipping Address:</p>
-                          <p>{orderDetails.shipping_address}</p>
-                          <p className="text-gray-500">Amount:</p>
-                          <p>${orderDetails.total_amount?.toFixed(2)}</p>
-                          <p className="text-gray-500">Status:</p>
-                          <p className="capitalize">{orderDetails.status}</p>
+                          <p className="text-gray-500">Order ID:</p><p>{orderDetails.id}</p>
+                          <p className="text-gray-500">Date:</p><p>{new Date(orderDetails.created_at).toLocaleString()}</p>
+                          <p className="text-gray-500">Shipping Address:</p><p>{orderDetails.shipping_address}</p>
+                          <p className="text-gray-500">Amount:</p><p>${orderDetails.total_amount?.toFixed(2)}</p>
+                          <p className="text-gray-500">Status:</p><p className="capitalize">{orderDetails.status}</p>
                         </div>
                         
                         {orderDetails.order_items && orderDetails.order_items.length > 0 && (
                           <div className="mt-4">
                             <h4 className="font-medium mb-2">Items:</h4>
                             <ul className="space-y-2">
-                              {orderDetails.order_items.map((item: OrderItem, idx: number) => (
+                              {orderDetails.order_items.map((item, idx) => (
                                 <li key={idx} className="flex justify-between text-sm">
-                                  <span>
-                                    {item.product_name || 'Product'} ({item.quantity} {item.quantity === 1 ? item.product_unit || 'unit' : `${item.product_unit || 'unit'}s`})
-                                  </span>
+                                  <span>{item.product_name} ({item.quantity} {item.product_unit})</span>
                                   <span>${(item.unit_price * item.quantity).toFixed(2)}</span>
                                 </li>
                               ))}
@@ -294,26 +228,18 @@ const OrderPaymentProcess = () => {
                     <p className="text-red-600 mb-6">{error || "There was an issue processing your payment."}</p>
                     <Alert variant="destructive">
                       <AlertTitle>Error</AlertTitle>
-                      <AlertDescription>
-                        Your payment could not be completed. Please try again or contact customer support.
-                      </AlertDescription>
+                      <AlertDescription>Your payment could not be completed. Please try again.</AlertDescription>
                     </Alert>
                   </div>
                 )}
               </CardContent>
               <CardFooter className="flex flex-col sm:flex-row gap-4 pb-6">
                 {paymentStatus === 'failed' ? (
-                  <Button onClick={handleReturnToMarket} className="w-full">
-                    Return to Market
-                  </Button>
+                  <Button onClick={() => navigate('/market')} className="w-full">Return to Market</Button>
                 ) : paymentStatus === 'success' ? (
                   <>
-                    <Button onClick={handleReturnToMarket} variant="outline" className="flex-1">
-                      Continue Shopping
-                    </Button>
-                    <Button onClick={handleViewOrders} className="flex-1">
-                      View My Orders
-                    </Button>
+                    <Button onClick={() => navigate('/market')} variant="outline" className="flex-1">Continue Shopping</Button>
+                    <Button onClick={() => navigate('/dashboard/orders')} className="flex-1">View My Orders</Button>
                   </>
                 ) : null}
               </CardFooter>

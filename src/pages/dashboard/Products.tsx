@@ -8,23 +8,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
 import { formatCurrency } from "@/lib/utils";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader,
+  AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 
 interface Product {
@@ -54,16 +43,24 @@ const Products = () => {
         return;
       }
 
-      // Check if user is a verified farmer
+      // Check if user is a verified farmer using user_roles table
+      const { data: roleData, error: roleError } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', session.user.id)
+        .maybeSingle();
+
+      if (roleError) throw roleError;
+
       const { data: profileData, error: profileError } = await supabase
         .from('profiles')
-        .select('role, verification_status')
+        .select('verification_status')
         .eq('id', session.user.id)
-        .single();
+        .maybeSingle();
 
       if (profileError) throw profileError;
 
-      if (profileData.role !== 'farmer' || profileData.verification_status !== 'verified') {
+      if (roleData?.role !== 'farmer' || profileData?.verification_status !== 'verified') {
         toast({
           title: "Access Denied",
           description: "Only verified farmers can access the product dashboard",
@@ -73,7 +70,6 @@ const Products = () => {
         return;
       }
 
-      // Fetch only products belonging to this farmer
       const { data, error } = await supabase
         .from('products')
         .select('*')
@@ -96,30 +92,20 @@ const Products = () => {
   const handleDeleteProduct = async (productId: string) => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        navigate('/auth');
-        return;
-      }
+      if (!session) { navigate('/auth'); return; }
 
       const { error } = await supabase
         .from('products')
         .delete()
         .eq('id', productId)
-        .eq('seller_id', session.user.id);  // Only allow deletion of own products
+        .eq('seller_id', session.user.id);
 
       if (error) throw error;
 
       setProducts(products.filter(product => product.id !== productId));
-      toast({
-        title: "Success",
-        description: "Product deleted successfully",
-      });
+      toast({ title: "Success", description: "Product deleted successfully" });
     } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to delete product",
-        variant: "destructive",
-      });
+      toast({ title: "Error", description: "Failed to delete product", variant: "destructive" });
     }
   };
 
@@ -175,19 +161,13 @@ const Products = () => {
                     <TableCell>{product.quantity_available}</TableCell>
                     <TableCell>
                       <span className={`px-2 py-1 rounded-full text-xs ${
-                        product.status === 'active' 
-                          ? 'bg-green-100 text-green-800' 
-                          : 'bg-gray-100 text-gray-800'
+                        product.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
                       }`}>
                         {product.status}
                       </span>
                     </TableCell>
                     <TableCell className="text-right space-x-2">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => navigate(`/dashboard/products/${product.id}`)}
-                      >
+                      <Button variant="ghost" size="sm" onClick={() => navigate(`/dashboard/products/${product.id}`)}>
                         <Pencil className="h-4 w-4" />
                       </Button>
                       <AlertDialog>

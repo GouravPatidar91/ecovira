@@ -34,11 +34,7 @@ const OrderConfirmation = () => {
         const orderId = params.get('orderId');
         
         if (!orderId) {
-          toast({
-            title: "Error",
-            description: "No order ID provided",
-            variant: "destructive",
-          });
+          toast({ title: "Error", description: "No order ID provided", variant: "destructive" });
           navigate("/market");
           return;
         }
@@ -47,62 +43,46 @@ const OrderConfirmation = () => {
         const session = data.session;
         
         if (!session) {
-          toast({
-            title: "Authentication required",
-            description: "Please log in to view your order",
-            variant: "destructive",
-          });
+          toast({ title: "Authentication required", description: "Please log in to view your order", variant: "destructive" });
           navigate("/auth");
           return;
         }
 
-        // Use the get_order_details RPC function
-        const { data: orderData, error: orderError } = await supabase.rpc(
-          'get_order_details',
-          { 
-            p_order_id: orderId,
-            p_user_id: session.user.id 
-          }
-        );
+        // Fetch order directly
+        const { data: orderData, error: orderError } = await supabase
+          .from('orders')
+          .select('*')
+          .eq('id', orderId)
+          .eq('buyer_id', session.user.id)
+          .maybeSingle();
 
-        if (orderError || !orderData || orderData.length === 0) {
+        if (orderError || !orderData) {
           console.error('Error fetching order:', orderError);
-          toast({
-            title: "Error",
-            description: "Could not retrieve order details",
-            variant: "destructive",
-          });
+          toast({ title: "Error", description: "Could not retrieve order details", variant: "destructive" });
           navigate("/market");
           return;
         }
           
-        setOrderDetails(orderData[0]);
+        setOrderDetails(orderData);
 
-        // Fetch order items
-        const { data: orderItems, error: itemsError } = await supabase.rpc(
-          'get_order_items',
-          {
-            p_order_id: orderId,
-            p_user_id: session.user.id
-          }
-        );
+        // Fetch order items with product info
+        const { data: items, error: itemsError } = await supabase
+          .from('order_items')
+          .select('*, products(name, unit)')
+          .eq('order_id', orderId);
           
-        if (!itemsError && orderItems) {
-          setOrderDetails(prevState => {
-            if (prevState) {
-              return { ...prevState, order_items: orderItems };
-            }
-            return prevState;
-          });
+        if (!itemsError && items) {
+          const mappedItems = items.map((item: any) => ({
+            ...item,
+            product_name: item.products?.name || 'Product',
+            product_unit: item.products?.unit || 'unit',
+          }));
+          setOrderDetails(prev => prev ? { ...prev, order_items: mappedItems } : prev);
         }
         
       } catch (error) {
         console.error('Error in order confirmation:', error);
-        toast({
-          title: "Error",
-          description: "An unexpected error occurred",
-          variant: "destructive",
-        });
+        toast({ title: "Error", description: "An unexpected error occurred", variant: "destructive" });
         navigate("/market");
       } finally {
         setIsLoading(false);
@@ -112,9 +92,7 @@ const OrderConfirmation = () => {
     fetchOrderDetails();
   }, [location.search, navigate, toast]);
 
-  const handleContinueShopping = () => {
-    navigate("/market");
-  };
+  const handleContinueShopping = () => navigate("/market");
 
   if (isLoading) {
     return (
@@ -144,9 +122,7 @@ const OrderConfirmation = () => {
                   <CheckCircle className="h-8 w-8 text-green-600" />
                 </div>
                 <CardTitle className="text-2xl">Order Request Sent!</CardTitle>
-                <p className="text-gray-600">
-                  Your order request has been sent to the sellers for review.
-                </p>
+                <p className="text-gray-600">Your order request has been sent to the sellers for review.</p>
               </CardHeader>
               
               <CardContent className="space-y-6">
@@ -204,9 +180,7 @@ const OrderConfirmation = () => {
               </CardContent>
               
               <CardFooter>
-                <Button onClick={handleContinueShopping} className="w-full">
-                  Continue Shopping
-                </Button>
+                <Button onClick={handleContinueShopping} className="w-full">Continue Shopping</Button>
               </CardFooter>
             </Card>
           </div>
