@@ -132,26 +132,31 @@ const Market = () => {
                   </div>
                 ))}
               </div>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                {products.map((product) => (
-                  <ProductCard
-                    key={product.id}
-                    id={product.id}
-                    name={product.name}
-                    price={product.price}
-                    unit={product.unit}
-                    image={product.images?.[0] || "https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&q=80"}
-                    farmer={product.seller_business_name}
-                    location={product.seller_location}
-                    organic={product.is_organic}
-                    quantity_available={product.quantity_available}
-                    description={product.description}
-                    seller_id={product.seller_id}
-                  />
-                ))}
-              </div>
-            )}
+            ) : products.length === 0 ? (
+                <div className="text-center py-16">
+                  <p className="text-lg text-muted-foreground">No products available at the moment.</p>
+                  <p className="text-sm text-muted-foreground mt-2">Check back later for fresh produce from local farmers.</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                  {products.map((product) => (
+                    <ProductCard
+                      key={product.id}
+                      id={product.id}
+                      name={product.name}
+                      price={product.price}
+                      unit={product.unit}
+                      image={product.images?.[0] || "https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&q=80"}
+                      farmer={product.seller_business_name}
+                      location={product.seller_location}
+                      organic={product.is_organic}
+                      quantity_available={product.quantity_available}
+                      description={product.description}
+                      seller_id={product.seller_id}
+                    />
+                  ))}
+                </div>
+              )}
           </div>
         </section>
       </div>
