@@ -383,6 +383,41 @@ export type Database = {
           total_amount: number
         }[]
       }
+      get_order_details: {
+        Args: { p_order_id: string; p_user_id: string }
+        Returns: {
+          buyer_id: string
+          created_at: string
+          id: string
+          payment_status: string
+          shipping_address: string
+          status: string
+          total_amount: number
+        }[]
+      }
+      get_order_items: {
+        Args: { p_order_id: string; p_user_id: string }
+        Returns: {
+          created_at: string
+          id: string
+          order_id: string
+          product_id: string
+          product_name: string
+          product_unit: string
+          quantity: number
+          total_price: number
+          unit_price: number
+        }[]
+      }
+      get_pending_farmers: {
+        Args: never
+        Returns: {
+          business_name: string
+          created_at: string
+          id: string
+          verification_status: string
+        }[]
+      }
       get_seller_orders: {
         Args: { seller_user_id: string }
         Returns: {
@@ -395,6 +430,28 @@ export type Database = {
           shipping_address: string
           status: string
           total_amount: number
+        }[]
+      }
+      get_user_profile_with_role: {
+        Args: { p_user_id: string }
+        Returns: {
+          avatar_url: string
+          bio: string
+          business_name: string
+          id: string
+          location: string
+          role: string
+          verification_status: string
+        }[]
+      }
+      get_verified_farmers: {
+        Args: never
+        Returns: {
+          avatar_url: string
+          bio: string
+          business_name: string
+          id: string
+          location: string
         }[]
       }
       has_role: {

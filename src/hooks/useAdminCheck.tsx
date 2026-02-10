@@ -24,14 +24,14 @@ export const useAdminCheck = () => {
       }
 
       const { data, error } = await supabase
-        .from('profiles')
+        .from('user_roles')
         .select('role')
-        .eq('id', session.user.id)
-        .single();
+        .eq('user_id', session.user.id)
+        .maybeSingle();
 
       if (error) throw error;
 
-      if (data.role !== 'admin') {
+      if (data?.role !== 'admin') {
         toast({
           title: "Access Denied",
           description: "You don't have permission to access this page",

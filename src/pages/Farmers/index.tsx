@@ -1,4 +1,3 @@
-
 import Navigation from "@/components/Navigation";
 import { Button } from "@/components/ui/button";
 import { Tractor } from "lucide-react";
@@ -29,17 +28,24 @@ const Farmers = () => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
-        const { data, error } = await supabase
-          .from('profiles')
-          .select('id, business_name, location, bio, role, avatar_url')
-          .eq('id', session.user.id)
-          .single();
+        // Use the RPC function that joins profiles with user_roles
+        const { data, error } = await supabase.rpc('get_user_profile_with_role', {
+          p_user_id: session.user.id
+        });
 
         if (error) throw error;
         
-        if (data) {
-          setUserProfile(data);
-          setIsSeller(data.role === 'farmer');
+        if (data && data.length > 0) {
+          const profile = data[0];
+          setUserProfile({
+            id: profile.id,
+            business_name: profile.business_name,
+            location: profile.location,
+            bio: profile.bio,
+            role: profile.role as 'farmer' | 'buyer' | 'admin',
+            avatar_url: profile.avatar_url,
+          });
+          setIsSeller(profile.role === 'farmer');
         }
       }
     } catch (error) {
@@ -49,14 +55,18 @@ const Farmers = () => {
 
   const fetchSellers = async () => {
     try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('id, business_name, location, bio, role, avatar_url')
-        .eq('role', 'farmer')
-        .eq('verification_status', 'verified');
+      // Use the RPC function for verified farmers
+      const { data, error } = await supabase.rpc('get_verified_farmers');
 
       if (error) throw error;
-      setSellers(data || []);
+      setSellers((data || []).map((f: any) => ({
+        id: f.id,
+        business_name: f.business_name,
+        location: f.location,
+        bio: f.bio,
+        role: 'farmer' as const,
+        avatar_url: f.avatar_url,
+      })));
     } catch (error) {
       toast({
         title: "Error",
@@ -76,12 +86,11 @@ const Farmers = () => {
   const handleContinueToRegistration = async () => {
     const { data: { session } } = await supabase.auth.getSession();
     if (session) {
-      // Check if user needs verification
       const { data: profile, error } = await supabase
         .from('profiles')
         .select('verification_status')
         .eq('id', session.user.id)
-        .single();
+        .maybeSingle();
 
       if (error) {
         console.error('Error fetching profile:', error);
@@ -102,10 +111,8 @@ const Farmers = () => {
         return;
       }
 
-      // If not verified, redirect to verification
       navigate('/seller-verification');
     } else {
-      // If not logged in, redirect to auth
       navigate('/auth?mode=seller');
     }
     setIsSellerPanelOpen(false);
@@ -115,7 +122,6 @@ const Farmers = () => {
     <div className="min-h-screen bg-gray-50">
       <Navigation />
       
-      {/* Hero Section */}
       <section className="pt-24 pb-12 px-4 bg-gradient-to-r from-market-50 to-market-100">
         <div className="container mx-auto max-w-6xl">
           <div className="text-center space-y-6">
@@ -139,7 +145,6 @@ const Farmers = () => {
         </div>
       </section>
 
-      {/* Sellers Section */}
       <section className="py-12 px-4">
         <div className="container mx-auto max-w-6xl">
           {isSeller && userProfile && (

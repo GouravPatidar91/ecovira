@@ -16,10 +16,8 @@ interface Product {
   price: number;
   unit: string;
   images: string[];
-  seller: {
-    business_name: string;
-    location: string;
-  };
+  seller_business_name: string;
+  seller_location: string;
   is_organic: boolean;
   quantity_available: number;
   description: string;
@@ -46,28 +44,38 @@ const Market = () => {
 
   const fetchProducts = async () => {
     try {
-      const { data, error } = await supabase
+      // Fetch products first
+      const { data: productsData, error } = await supabase
         .from('products')
-        .select(`
-          id,
-          name,
-          price,
-          unit,
-          images,
-          is_organic,
-          quantity_available,
-          description,
-          seller_id,
-          seller:profiles (
-            business_name,
-            location
-          )
-        `)
+        .select('id, name, price, unit, images, is_organic, quantity_available, description, seller_id')
         .eq('status', 'active')
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setProducts(data || []);
+
+      if (!productsData || productsData.length === 0) {
+        setProducts([]);
+        return;
+      }
+
+      // Get unique seller IDs and fetch their profiles
+      const sellerIds = [...new Set(productsData.map(p => p.seller_id))];
+      const { data: sellers } = await supabase
+        .from('profiles')
+        .select('id, business_name, location')
+        .in('id', sellerIds);
+
+      const sellerMap = new Map((sellers || []).map(s => [s.id, s]));
+
+      setProducts(productsData.map(p => {
+        const seller = sellerMap.get(p.seller_id);
+        return {
+          ...p,
+          images: p.images || [],
+          seller_business_name: seller?.business_name || 'Unknown',
+          seller_location: seller?.location || 'Unknown',
+        };
+      }));
     } catch (error) {
       toast({
         title: "Error",
@@ -84,7 +92,6 @@ const Market = () => {
       <div className="min-h-screen bg-gray-50">
         <Navigation />
         
-        {/* Hero Section */}
         <section className="pt-24 pb-12 px-4 bg-gradient-to-r from-market-50 to-market-100">
           <div className="container mx-auto max-w-6xl">
             <div className="text-center space-y-6">
@@ -95,7 +102,6 @@ const Market = () => {
                 Browse our selection of fresh, locally sourced produce directly from farmers in your area
               </p>
               
-              {/* Search and Filter */}
               <div className="flex flex-col md:flex-row gap-4 max-w-2xl mx-auto mt-8">
                 <div className="relative flex-1">
                   <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" />
@@ -114,7 +120,6 @@ const Market = () => {
           </div>
         </section>
 
-        {/* Products Grid */}
         <section className="py-12 px-4">
           <div className="container mx-auto max-w-6xl">
             {isLoading ? (
@@ -137,8 +142,8 @@ const Market = () => {
                     price={product.price}
                     unit={product.unit}
                     image={product.images?.[0] || "https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&q=80"}
-                    farmer={product.seller.business_name}
-                    location={product.seller.location}
+                    farmer={product.seller_business_name}
+                    location={product.seller_location}
                     organic={product.is_organic}
                     quantity_available={product.quantity_available}
                     description={product.description}

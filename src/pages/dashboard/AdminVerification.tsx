@@ -3,12 +3,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -20,7 +15,6 @@ interface VerificationRequest {
   business_name: string | null;
   verification_status: string;
   created_at: string;
-  verification_document: string | null;
 }
 
 const AdminVerification = () => {
@@ -35,15 +29,16 @@ const AdminVerification = () => {
 
   const fetchVerificationRequests = async () => {
     try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('id, business_name, verification_status, created_at, verification_document')
-        .eq('role', 'farmer')
-        .eq('verification_status', 'pending')
-        .order('created_at', { ascending: false });
+      // Use the RPC function that joins profiles with user_roles
+      const { data, error } = await supabase.rpc('get_pending_farmers');
 
       if (error) throw error;
-      setRequests(data || []);
+      setRequests((data || []).map((r: any) => ({
+        id: r.id,
+        business_name: r.business_name,
+        verification_status: r.verification_status,
+        created_at: r.created_at,
+      })));
     } catch (error) {
       console.error('Error fetching verification requests:', error);
       toast({
@@ -66,7 +61,6 @@ const AdminVerification = () => {
 
       if (error) throw error;
 
-      // Update local state
       setRequests(requests.filter(req => req.id !== id));
       
       toast({
@@ -137,31 +131,15 @@ const AdminVerification = () => {
                     <TableCell>{new Date(request.created_at).toLocaleDateString()}</TableCell>
                     <TableCell>
                       <div className="flex gap-2">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="bg-green-50 hover:bg-green-100"
+                        <Button size="sm" variant="outline" className="bg-green-50 hover:bg-green-100"
                           onClick={() => handleVerification(request.id, 'verified')}
-                          disabled={processingId === request.id}
-                        >
-                          {processingId === request.id ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : (
-                            <Check className="h-4 w-4" />
-                          )}
+                          disabled={processingId === request.id}>
+                          {processingId === request.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
                         </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="bg-red-50 hover:bg-red-100"
+                        <Button size="sm" variant="outline" className="bg-red-50 hover:bg-red-100"
                           onClick={() => handleVerification(request.id, 'rejected')}
-                          disabled={processingId === request.id}
-                        >
-                          {processingId === request.id ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : (
-                            <X className="h-4 w-4" />
-                          )}
+                          disabled={processingId === request.id}>
+                          {processingId === request.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <X className="h-4 w-4" />}
                         </Button>
                       </div>
                     </TableCell>
